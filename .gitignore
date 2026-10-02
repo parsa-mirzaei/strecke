@@ -1,0 +1,15 @@
+# Personal data: Anki exports, seed working files. Never commit.
+/data/
+/Data/
+
+# Local secrets and generated files
+.env
+.env.*
+*.local
+.clasprc.json
+build/
+dist/
+node_modules/
+coverage/
+.DS_Store
+Thumbs.db
