@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f3ec">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a1917">
+<title>Strecke spike</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root { --paper:#f6f3ec; --ink:#1c1b19; --muted:#6f6a60; --line:#dcd6ca; --accent:#2f5d50; }
+  @media (prefers-color-scheme: dark) { :root { --paper:#1a1917; --ink:#ece8df; --muted:#9a948a; --line:#34322e; --accent:#8fbcae; } }
+  html { -webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100%; overscroll-behavior:none; }
+  body { margin:0; min-height:100dvh; background:var(--paper); color:var(--ink);
+    font:16px/1.5 Georgia, "Noto Serif", serif;
+    padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px)); box-sizing:border-box; }
+  main { max-width:520px; margin:0 auto; }
+  h1 { font-size:22px; font-weight:normal; margin:0 0 4px; }
+  h2 { font:600 13px/1.2 system-ui, sans-serif; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:28px 0 8px; }
+  p.small, .kv { font:14px/1.45 system-ui, sans-serif; color:var(--muted); }
+  section { border-top:1px solid var(--line); padding-top:4px; }
+  input { font:16px system-ui, sans-serif; width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid var(--line);
+    border-radius:8px; background:transparent; color:var(--ink); }
+  button { font:600 15px system-ui, sans-serif; padding:11px 16px; border-radius:8px; border:1px solid var(--ink);
+    background:var(--ink); color:var(--paper); margin:8px 8px 0 0; touch-action:manipulation; user-select:none; -webkit-user-select:none;
+    transition:transform 120ms cubic-bezier(.23,1,.32,1); }
+  button.ghost { background:transparent; color:var(--ink); }
+  button:active { transform:scale(.97); }
+  pre { font:13px/1.45 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; word-break:break-word;
+    background:color-mix(in srgb, var(--ink) 6%, transparent); padding:10px 12px; border-radius:8px; margin:10px 0 0; }
+  .sentence { font-size:20px; margin:8px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Strecke · Phase 0</h1>
+  <p class="small">Three checks: install, round-trip, German voice. Tap <b>Copy results</b> at the end and send them to Claude.</p>
+
+  <h2>1 · Environment</h2>
+  <section><pre id="env">…</pre></section>
+
+  <h2>2 · Apps Script round-trip</h2>
+  <section>
+    <p class="small">Paste the Web app URL (ends in <code>/exec</code>). It stays on this phone only.</p>
+    <input id="url" type="url" inputmode="url" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="https://script.google.com/macros/s/…/exec" enterkeyhint="done">
+    <button id="ping">Ping 6×</button>
+    <pre id="rtt">not run</pre>
+  </section>
+
+  <h2>3 · German voice</h2>
+  <section>
+    <p class="sentence">Kannst du die Palette mit dem Gabelstapler holen?</p>
+    <button id="speak">Sprechen</button>
+    <button id="speak2" class="ghost">Satz 2</button>
+    <pre id="tts">voices: loading…</pre>
+  </section>
+
+  <h2>Results</h2>
+  <section>
+    <button id="copy">Copy results</button>
+    <pre id="out" hidden></pre>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const R = { env: {}, rtt: null, tts: {} };
+const SENTENCES = ['Kannst du die Palette mit dem Gabelstapler holen?', 'Ich habe morgen um acht einen Termin beim Bürgerbüro.'];
+
+// 1 · Environment
+function env() {
+  R.env = {
+    standalone: matchMedia('(display-mode: standalone)').matches,
+    online: navigator.onLine,
+    sw: navigator.serviceWorker ? (navigator.serviceWorker.controller ? 'controlling' : 'registered-not-controlling') : 'unsupported',
+    ua: navigator.userAgent,
+    viewport: innerWidth + '×' + innerHeight + ' @' + devicePixelRatio,
+    loadMs: Math.round(performance.now()),
+  };
+  $('env').textContent = Object.entries(R.env).map(([k, v]) => k + ': ' + v).join('\n');
+}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(env);
+addEventListener('load', env);
+
+// 2 · Round-trip
+$('url').value = localStorage.getItem('spike_url') || '';
+$('ping').addEventListener('click', async () => {
+  const url = $('url').value.trim();
+  if (!url.endsWith('/exec')) { $('rtt').textContent = 'URL must end in /exec'; return; }
+  localStorage.setItem('spike_url', url);
+  const times = [], lines = [];
+  for (let n = 1; n <= 6; n++) {
+    const t0 = performance.now();
+    try {
+      // text/plain avoids the CORS preflight Apps Script cannot answer.
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ n }) });
+      const body = await res.json();
+      const ms = Math.round(performance.now() - t0);
+      times.push(ms);
+      lines.push(`#${n}: ${ms} ms  (server ${body.server_ms} ms, ok=${body.ok}, words=${body.words})`);
+    } catch (e) {
+      lines.push(`#${n}: error ${e.message}`);
+    }
+    $('rtt').textContent = lines.join('\n');
+  }
+  const warm = times.slice(1).sort((a, b) => a - b);
+  R.rtt = { first: times[0], warmMedian: warm[Math.floor(warm.length / 2)], max: Math.max(...times), all: times, errors: 6 - times.length };
+  $('rtt').textContent += `\n\nfirst ${R.rtt.first} ms · warm median ${R.rtt.warmMedian} ms · max ${R.rtt.max} ms`;
+});
+
+// 3 · TTS
+let voices = [];
+let voicesEvent = false;
+function loadVoices() {
+  voices = speechSynthesis.getVoices();
+  const de = voices.filter(v => v.lang && v.lang.toLowerCase().startsWith('de'));
+  R.tts.total = voices.length;
+  R.tts.german = de.map(v => `${v.name} [${v.lang}]${v.localService ? ' local' : ' network'}${v.default ? ' default' : ''}`);
+  R.tts.voiceschangedFired = voicesEvent;
+  $('tts').textContent = `voices: ${voices.length} total, ${de.length} German\n` + (R.tts.german.join('\n') || 'NO GERMAN VOICE');
+}
+if ('speechSynthesis' in window) {
+  speechSynthesis.addEventListener('voiceschanged', () => { voicesEvent = true; loadVoices(); });
+  loadVoices();
+  setTimeout(loadVoices, 1500); // fallback if voiceschanged never fires
+} else {
+  $('tts').textContent = 'speechSynthesis unsupported';
+}
+function speak(text) {
+  // Must run inside the tap handler.
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'de-DE';
+  const de = voices.find(v => v.lang === 'de-DE' && v.localService) || voices.find(v => v.lang && v.lang.startsWith('de'));
+  if (de) u.voice = de;
+  const t0 = performance.now();
+  u.onstart = () => { R.tts.startMs = Math.round(performance.now() - t0); R.tts.used = de ? de.name : '(lang only)'; loadVoices(); $('tts').textContent += `\n\nspeaking with ${R.tts.used}, started after ${R.tts.startMs} ms`; };
+  u.onerror = e => { R.tts.error = e.error; $('tts').textContent += `\n\nerror: ${e.error}`; };
+  speechSynthesis.speak(u);
+}
+$('speak').addEventListener('click', () => speak(SENTENCES[0]));
+$('speak2').addEventListener('click', () => speak(SENTENCES[1]));
+
+// Results
+$('copy').addEventListener('click', async () => {
+  env();
+  const text = 'STRECKE PHASE 0 RESULTS\n' + JSON.stringify(R, null, 2);
+  $('out').hidden = false;
+  $('out').textContent = text;
+  try { await navigator.clipboard.writeText(text); $('copy').textContent = 'Copied'; }
+  catch { $('copy').textContent = 'Select the text below and copy it'; }
+});
+</script>
+</body>
+</html>
