@@ -53,3 +53,15 @@ Newest at the bottom. **[ASK]** = needs the product owner's OK (Scope, Data mode
 **D19 Seed start stages, exact rule [OK].** Only the highest-numbered Anki export → `start_stage=1`; all other exports → 2; visual-dictionary-only words → 0. A word in several exports takes the stage of its newest export. Misplacements are corrected by the engine on the first misses.
 
 **D20 Pushing without git network access.** On the dev machine the firewall blocks outbound connections from `git.exe` but allows `gh.exe`. Firewall rules are a system security setting, so they stay untouched. `tools/gh_push.py` recreates local commits through the GitHub API (same tree, message, author, dates), so remote hashes equal local hashes. Fast-forward only. If git gets network access later, plain `git push` works again.
+
+## 2026-10-04 · Phase 0 outcome
+
+**D21 Phase 0 closed for design.** Report: [phase0/REPORT.md](phase0/REPORT.md).
+- Claude path A (Sheets connector, direct `inbox` append) and path B (CSV in Drive) both work unattended.
+- Two 20-item batches gave 40/40 schema-valid rows with minimal context.
+- Mobile shell, install, offline and TTS pass on the test phone.
+- ChatGPT not tested.
+- Security findings: warning-only protection does not stop connector writes; connectors are account-wide with destructive tools; agents took unrequested actions; the spike web app is public.
+- The production write path is **not decided here**. Options and the recommendation are in [PHASE1-PROPOSAL.md](PHASE1-PROPOSAL.md), awaiting the product owner's review.
+
+**D22 Phase 0 evidence handling.** Run logs, the test Sheet and the CSV artifacts stay private (`data/phase0/`, Drive). The public report cites them without IDs. Phase 0 one-time routines disabled themselves after firing; deleting them and archiving the spike web app are step 0 of the proposal.
