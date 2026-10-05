@@ -2,13 +2,16 @@
 
 A German micro-practice app for A2–B1 learners. Open it and one practice card is on screen in under two seconds: no session to finish, no due count, no streaks. Answers are spoken aloud and self-graded. Words climb a five-step ladder from *recognise* to *use in a new situation*.
 
-**Status:** Phase 0 (risk spike). The live page is a test harness for the three risky parts: agent access to a Google Sheet, Apps Script round-trip time from a phone, and German text-to-speech in an installed PWA.
+**Status:** Phase 0 (risk spike) done. A security gate now runs before any product code: the deterministic import boundary is built and tested ([core/](core)), the identity isolation it rests on is waiting for its last owner steps ([gate report](docs/security/GATE-REPORT.md)). The live page is still the Phase 0 test harness.
 
 ## How it works
 
 ```
-phone (PWA, IndexedDB)  ⇄  Apps Script web app  ⇄  your Google Sheet  ←  scheduled AI agent (inbox tab)
+scheduled AI agent ──append──► Inbox sheet ──validator + importer──► Core sheet ◄──OAuth──► phone (PWA, IndexedDB)
+   (everyday Google account)   (untrusted)       (deterministic code)   (vault account, no AI access)
 ```
+
+*AI proposes. Deterministic code validates. Core is authoritative.* (Proposed production design, see [architecture](docs/ARCHITECTURE.md).)
 
 - **Offline-first PWA** (Vite, TypeScript, Preact) on GitHub Pages. Cards render from the device cache; the network runs only in the background.
 - **Bring your own Sheet.** Each learner owns one private Google Sheet and one Apps Script deployment. No server, no accounts, no paid APIs.
@@ -19,6 +22,8 @@ phone (PWA, IndexedDB)  ⇄  Apps Script web app  ⇄  your Google Sheet  ←  s
 
 - [Spec](docs/SPEC.md): scope, data model, API contract, learning engine, build phases
 - [Decisions](docs/DECISIONS.md): what was decided and why
+- [Architecture](docs/ARCHITECTURE.md): components, data flows, trust boundaries
+- [Security](docs/security/): threat model, security architecture, gate report
 - [CLAUDE.md](CLAUDE.md): working rules for the coding agent
 
 Built with Claude Code; product, spec and decisions owned by a human product owner.

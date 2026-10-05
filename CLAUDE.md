@@ -54,5 +54,5 @@ It checks generic patterns (emails, Google/Drive/Apps Script IDs and URLs, routi
 - Ladder stages 0–5 and the picking order exactly as SPEC "Learning engine". Scheduler = pure function of the event log plus `start_stage` (so FSRS can replay it later). Every ladder row has a Vitest test.
 
 ## Repo layout
-- `app/` PWA · `apps-script/` backend (clasp) · `agents/` agent prompts (placeholders only) · `spike/` Phase 0 throwaway · `tools/` build helpers · `docs/` SPEC, DECISIONS, runbooks.
+- `app/` PWA · `core/` shared security core (validator, importer, Core writer, audit, backup; pure TS, no runtime deps) · `apps-script/` backend (clasp) · `agents/` agent prompts (placeholders only) · `spike/` Phase 0 throwaway · `tools/` build helpers · `docs/` SPEC, DECISIONS, ARCHITECTURE, security, runbooks.
 - Tooling: Node 24 LTS at `C:\Program Files\nodejs`, gh at `C:\Program Files\GitHub CLI` (add to PATH in Bash if missing). Python 3.11 for data scripts.

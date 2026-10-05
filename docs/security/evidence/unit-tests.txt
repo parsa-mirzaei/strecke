@@ -1,0 +1,133 @@
+
+ RUN  v3.2.7 C:/Users/ACER/Downloads/German Learning App
+
+ ✓ core/test/apps-script.test.ts > apps-script/inbox-setup.gs > uses the same Inbox columns as the importer
+ ✓ core/test/apps-script.test.ts > apps-script/inbox-setup.gs > leaves exactly the agent columns A:T editable (20 = agent columns, U:W reserved)
+ ✓ core/test/apps-script.test.ts > apps-script/inbox-setup.gs > never exposes a web endpoint
+ ✓ core/test/validate.test.ts > sha256 (pure TS) matches node:crypto > ""
+ ✓ core/test/validate.test.ts > sha256 (pure TS) matches node:crypto > "abc"
+ ✓ core/test/validate.test.ts > sha256 (pure TS) matches node:crypto > "Prüfung ß „Das kling"
+ ✓ core/test/validate.test.ts > sha256 (pure TS) matches node:crypto > "xxxxxxxxxxxxxxxxxxxx"
+ ✓ core/test/validate.test.ts > sha256 (pure TS) matches node:crypto > "😀 emoji"
+ ✓ core/test/validate.test.ts > dedupe key > strips the article only for nouns
+ ✓ core/test/validate.test.ts > dedupe key > folds case, whitespace, trailing punctuation and quotes; keeps umlauts and ß
+ ✓ core/test/validate.test.ts > dedupe key > NFC-normalises (decomposed ü equals composed ü)
+ ✓ core/test/validate.test.ts > validator accepts a clean row > no reasons
+ ✓ core/test/validate.test.ts > validator accepts a clean row > chunk row
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > missing required de
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > whitespace-only en
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > bad pos enum
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > bad domain
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > article on verb
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > noun without article
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > chunk that is a noun
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > two gaps
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > no gap
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > four underscores
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > 15 words
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > missing answer
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > oversized field
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > oversized sentence
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > distractor equals answer
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > agent claims seed source (skip review)
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > agent claims capture source
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > agent sets start_stage
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > agent pre-fills status
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > agent supplies its own word_id
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > malformed capture_id
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > run_id with spaces
+ ✓ core/test/validate.test.ts > validator rejects malformed rows (adversarial) > run_id spoofing another source
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > formula =
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > formula +
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > formula @
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > formula -
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > formula after spaces
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > URL
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > bare domain
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > HTML/script
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > template braces
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > markdown code
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > newline smuggling
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > zero-width space
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > bidi override
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > tag characters (hidden ASCII)
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > EN instruction
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > addresses the model
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > tool verb + target
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > DE instruction
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > DE destructive
+ ✓ core/test/validate.test.ts > validator rejects injection payloads (adversarial) > ordinary German that mentions a password is still accepted
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "delete" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "deleteRows" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "clear" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "clearTab" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "dropColumn" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "renameTab" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "overwrite" -> rejected
+ ✓ core/test/writer.test.ts > no destructive verbs exist > ATTACK op "truncate" -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK importer appends events (fake learner history) -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK importer activates a pending word -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK importer edits an existing word -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK importer writes word_state / config -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK importer appends an AI word as active -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK app appends words directly -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK unknown actor -> rejected
+ ✓ core/test/writer.test.ts > actor permissions (importer = the AI-facing path) > ATTACK restore actor cannot use ops at all
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK duplicate ID with different content -> rejected (IDs are immutable)
+ ✓ core/test/writer.test.ts > immutability and integrity > replayed identical event -> no-op, no new audit entry (sync idempotency)
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK malformed IDs -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK unknown column smuggled into a row -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK formula in an app-written cell -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK oversized payload -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK event for a word that does not exist -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK editWord tries to change word_id / status / source -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK editWord renames a word onto another word (dedupe bypass) -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK illegal status transitions -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK overwrite protected config key / out-of-range value -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > ATTACK corrupt required fields in word_state -> rejected
+ ✓ core/test/writer.test.ts > immutability and integrity > a batch is all-or-nothing: one bad op leaves Core untouched
+ ✓ core/test/writer.test.ts > immutability and integrity > the storage adapter only receives append and keyed update writes
+ ✓ core/test/writer.test.ts > audit trail > every applied op is chained; tampering anywhere is detected
+ ✓ core/test/writer.test.ts > audit trail > truncating the tail is caught by the head anchored in a backup
+ ✓ core/test/writer.test.ts > audit trail > rows deleted outside the writer are found via the audit
+ ✓ core/test/phase0-fixture.test.ts > Phase 0 real agent output (private fixture) > 44 rows: no false rejections; the known duplicate and the capture are handled
+ ✓ core/test/recovery.test.ts > recovery: bad batch > the audit identifies exactly the rows of the bad run
+ ✓ core/test/recovery.test.ts > recovery: bad batch > roll back without restore: reject the bad words through the writer (no deletes)
+ ✓ core/test/recovery.test.ts > recovery: bad batch > restore + merge: good work since the snapshot survives, the bad run is excluded
+ ✓ core/test/recovery.test.ts > recovery: accidental deletion and corruption outside the writer > detects the damage from the audit and from the snapshot diff
+ ✓ core/test/recovery.test.ts > recovery: accidental deletion and corruption outside the writer > restores every row and field; events from the phone are merged without duplicates
+ ✓ core/test/recovery.test.ts > recovery: broken migration and corrupted backups > a migration that drops a column is undone by restoring the snapshot
+ ✓ core/test/recovery.test.ts > recovery: broken migration and corrupted backups > ATTACK a tampered backup is refused (fail closed), not restored
+ ✓ core/test/recovery.test.ts > recovery: broken migration and corrupted backups > ATTACK a backup with a rewritten audit chain is refused
+ ✓ core/test/recovery.test.ts > recovery: broken migration and corrupted backups > snapshots are deterministic: same Core, same manifest
+ ✓ core/test/importer.test.ts > expansion stream > a valid AI row becomes a pending word with prompts, never active
+ ✓ core/test/importer.test.ts > capture stream > a row enriching an open capture goes live and closes the capture
+ ✓ core/test/importer.test.ts > capture stream > ATTACK forged capture_id (unknown) to skip review -> rejected
+ ✓ core/test/importer.test.ts > capture stream > ATTACK real capture_id on an unrelated word to smuggle it in as active -> rejected
+ ✓ core/test/importer.test.ts > capture stream > ATTACK reuse one capture for two rows -> second rejected
+ ✓ core/test/importer.test.ts > idempotency and replay > ATTACK replaying the same import three times changes Core once
+ ✓ core/test/importer.test.ts > idempotency and replay > ATTACK agent re-appends the same rows lower in the sheet -> no duplicate word
+ ✓ core/test/importer.test.ts > idempotency and replay > ATTACK agent clears the status column to force a re-import -> still already_seen
+ ✓ core/test/importer.test.ts > idempotency and replay > a slightly changed row is a new fingerprint but still a duplicate by dedupe_key
+ ✓ core/test/importer.test.ts > duplicates > ATTACK duplicate of an existing word (any status, any spelling variant) -> duplicate
+ ✓ core/test/importer.test.ts > duplicates > ATTACK duplicates inside one batch -> only the first is imported
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK renamed/reordered header -> whole sheet refused, Core untouched
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK extra header column -> refused
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK cells beyond the schema on a data row -> row invalid
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK more than 20 rows in one run -> rows 21+ rejected
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK flood of rows -> at most maxRowsPerPass evaluated per pass
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK oversized cell (100 KB) -> invalid, Core raw log stays bounded
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK invisible characters in a rejected row cannot block the batch
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK (found by fuzzing) run_id "-1" used to make the writer refuse the whole batch
+ ✓ core/test/importer.test.ts > structure attacks > ATTACK identical row twice in one sheet used to collide in inbox_log and block the batch
+ ✓ core/test/importer.test.ts > structure attacks > IDs are minted by the importer, unique, and never taken from the row
+ ✓ core/test/importer.test.ts > structure attacks > every row seen is logged in Core inbox_log with its fingerprint (audit + recovery)
+ ✓ core/test/importer.test.ts > agent view (the only Core-derived data an agent may read) > contains keys, counts and open captures only
+ ✓ core/test/importer.test.ts > agent view (the only Core-derived data an agent may read) > a capture that looks like an instruction is not published to the agent
+ ✓ core/test/fuzz.test.ts > fuzz: hostile Inbox content never breaks the import boundary > 2,000 random rows over 40 passes: writer accepts every batch and Core invariants hold
+
+ Test Files  7 passed (7)
+      Tests  124 passed (124)
+   Start at  12:17:23
+   Duration  1.70s (transform 355ms, setup 0ms, collect 923ms, tests 1.62s, environment 1ms, prepare 1.19s)
+
