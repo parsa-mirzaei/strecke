@@ -13,3 +13,6 @@ node_modules/
 coverage/
 .DS_Store
 Thumbs.db
+
+# graphify knowledge graph (local tooling output)
+graphify-out/
