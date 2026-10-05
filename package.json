@@ -1,0 +1,20 @@
+{
+  "name": "strecke",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Strecke: offline-first German practice PWA. This root package holds the shared security core and its tests.",
+  "scripts": {
+    "test": "vitest run",
+    "test:security": "vitest run --reporter=verbose",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "5.9.3",
+    "vitest": "3.2.7"
+  }
+}
