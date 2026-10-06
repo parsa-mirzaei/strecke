@@ -1,35 +1,37 @@
 import { useState } from 'preact/hooks';
 import { speech, type VoiceStatus } from '../audio/tts';
 import { DOMAIN_LABEL, type UsageEntry } from '../data/types';
-import { daysThisMonth, progressByDomain, todayStats } from '../engine/progress';
+import { progressByDomain } from '../engine/progress';
 import type { Feed } from '../state/useFeed';
 import { BackIcon } from './icons';
+import { getTheme, setTheme, type Theme } from './theme';
 
 interface Props {
   feed: Feed;
   voice: VoiceStatus;
-  online: boolean;
   usage: UsageEntry[];
   leaving: boolean;
   onClose: () => void;
   onReset: () => void;
 }
 
-const MONTH = new Intl.DateTimeFormat('de-DE', { month: 'long' });
+const THEMES: { value: Theme; label: string }[] = [
+  { value: 'dark', label: 'Dunkel' },
+  { value: 'light', label: 'Hell' },
+  { value: 'system', label: 'Wie das Gerät' },
+];
 
-/** "Was du schon sagen kannst": a route with five stops, each listing sentences you can now say. */
-export function ProgressPanel({ feed, voice, online, usage, leaving, onClose, onReset }: Props) {
+/** "Was du schon sagen kannst": per situation, the real sentences you can now say. No scores. */
+export function ProgressPanel({ feed, voice, usage, leaving, onClose, onReset }: Props) {
   const [open, setOpen] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const now = Date.now();
-  const stops = progressByDomain(feed.items, feed.states);
-  const total = stops.reduce((n, s) => n + s.sayable.length, 0);
-  const today = todayStats(feed.events, now);
-  const days = daysThisMonth(feed.events, now);
+  const [theme, setThemeState] = useState<Theme>(getTheme());
+  const groups = progressByDomain(feed.items, feed.states);
+  const total = groups.reduce((n, g) => n + g.sayable.length, 0);
 
   const copyUsage = async () => {
-    const lines = usage.map((u) => `${new Date(u.open).toISOString()}\t${Math.round((u.close - u.open) / 1000)}s\t${u.cards} Karten`);
-    const text = ['Strecke Prototyp: Nutzungsprotokoll', 'Start\tDauer\tKarten', ...lines].join('\n');
+    const lines = usage.map((u) => `${new Date(u.open).toISOString()}\t${Math.round((u.close - u.open) / 1000)}s\t${u.cards}`);
+    const text = ['Strecke: Nutzungsprotokoll', 'Start\tDauer\tEinträge', ...lines].join('\n');
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -39,64 +41,51 @@ export function ProgressPanel({ feed, voice, online, usage, leaving, onClose, on
   };
 
   return (
-    <section class={leaving ? 'panel is-leaving' : 'panel'} aria-label="Strecke">
+    <section class={leaving ? 'panel is-leaving' : 'panel'} aria-label="Was du schon sagen kannst">
       <div class="panel-top">
-        <button class="icon-btn" onClick={onClose} aria-label="Zurück zur Karte">
+        <button type="button" class="icon-btn" onClick={onClose} aria-label="Zurück">
           <BackIcon />
         </button>
       </div>
       <h1>Was du schon sagen kannst</h1>
       <p class="panel-lede">
         {total === 0
-          ? 'Noch nichts ganz sicher. Jede Karte bringt dich ein Stück weiter.'
-          : `${total} Wörter und Sätze kannst du sicher selbst sagen.`}
+          ? 'Noch nichts ganz sicher. Was du ohne Hilfe abrufen kannst, sammelt sich hier.'
+          : 'Sätze, die du ohne Hilfe abrufen kannst. Tippen zum Anhören.'}
       </p>
 
-      <ol class="route">
-        {stops.map((s) => {
-          const expanded = open === s.domain;
-          const shown = expanded ? s.sayable : s.sayable.slice(0, 3);
-          return (
-            <li class={s.sayable.length ? 'stop has-sayable' : 'stop'} key={s.domain}>
-              <h2>{DOMAIN_LABEL[s.domain]}</h2>
-              <p class="stop-count">
-                {s.sayable.length} sagbar{s.underway ? `, ${s.underway} unterwegs` : ''}
-              </p>
-              {shown.length > 0 && (
-                <ul>
-                  {shown.map((i) => (
-                    <li key={i.id}>
-                      <button lang="de" onClick={() => speech.speak(i.tier === 'chunk' ? i.de : i.sentence)}>
-                        {i.tier === 'chunk' ? i.de : i.sentence}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {s.sayable.length > 3 && (
-                <button class="stop-more" onClick={() => setOpen(expanded ? null : s.domain)}>
-                  {expanded ? 'Weniger zeigen' : `${s.sayable.length - 3} weitere`}
-                </button>
-              )}
-            </li>
-          );
-        })}
-      </ol>
+      {groups.map((g) => {
+        const expanded = open === g.domain;
+        const shown = expanded ? g.sayable : g.sayable.slice(0, 4);
+        return (
+          <section class="said" key={g.domain}>
+            <h2>{DOMAIN_LABEL[g.domain]}</h2>
+            {shown.length === 0 ? (
+              <p class="said-empty">{g.underway > 0 ? 'Kommt gerade.' : 'Noch nicht dran.'}</p>
+            ) : (
+              <ul>
+                {shown.map((i) => (
+                  <li key={i.id}>
+                    <button type="button" lang="de" onClick={() => speech.speak(i.tier === 'chunk' ? i.de : i.sentence)}>
+                      {i.tier === 'chunk' ? i.de : i.sentence}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {g.sayable.length > 4 && (
+              <button type="button" class="quiet" onClick={() => setOpen(expanded ? null : g.domain)}>
+                {expanded ? 'Weniger' : 'Alle zeigen'}
+              </button>
+            )}
+          </section>
+        );
+      })}
 
-      <div class="panel-section">
-        <h2>Heute</h2>
-        <p>
-          {today.cards === 0
-            ? 'Noch keine Karte heute.'
-            : `${today.cards} Karten, davon ${today.said} ${today.said === 1 ? 'Satz' : 'Sätze'} selbst gesagt.`}
-        </p>
-        {days > 0 && <p>Im {MONTH.format(now)} an {days} {days === 1 ? 'Tag' : 'Tagen'} Deutsch geübt.</p>}
-      </div>
-
-      <div class="panel-section">
+      <section class="said">
         <h2>Festgehalten</h2>
         {feed.captures.length === 0 ? (
-          <p>Hörst du ein Wort, das du behalten willst? Tippe auf +.</p>
+          <p class="said-empty">Hörst du ein Wort, das du behalten willst? Tippe auf +.</p>
         ) : (
           <ul class="captured">
             {feed.captures.slice(0, 8).map((c) => (
@@ -107,26 +96,42 @@ export function ProgressPanel({ feed, voice, online, usage, leaving, onClose, on
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <div class="panel-section">
-        <h2>Prototyp</h2>
-        <p>Beispieldaten, nur auf diesem Gerät gespeichert. {online ? '' : 'Gerade offline, alles funktioniert weiter.'}</p>
-        {voice === 'none' && <p>Keine deutsche Stimme gefunden. Android: Einstellungen › Sprachausgabe › Sprachdaten installieren › Deutsch. Hörkarten sind solange ausgeblendet.</p>}
-        {voice === 'unsupported' && <p>Dieser Browser kann nicht vorlesen. Hörkarten sind ausgeblendet.</p>}
+      <section class="about">
+        <h2>Darstellung</h2>
+        <div class="seg" role="radiogroup" aria-label="Darstellung">
+          {THEMES.map((t) => (
+            <button
+              type="button"
+              key={t.value}
+              role="radio"
+              aria-checked={theme === t.value}
+              onClick={() => {
+                setTheme(t.value);
+                setThemeState(t.value);
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <h2>Diese Version</h2>
+        <p>Beispieldaten, nur auf diesem Gerät gespeichert. Funktioniert auch offline.</p>
+        {voice === 'none' && <p>Keine deutsche Stimme gefunden. Android: Einstellungen › Sprachausgabe › Sprachdaten installieren › Deutsch. Bis dahin bleibt alles stumm.</p>}
+        {voice === 'unsupported' && <p>Dieser Browser kann nicht vorlesen. Bis dahin bleibt alles stumm.</p>}
         {voice === 'ready' && speech.voice && <p>Stimme: {speech.voice.name}</p>}
-        <p>{usage.length} Mal geöffnet.</p>
-        <button class="text-btn" onClick={copyUsage}>{copied ? 'Kopiert' : 'Nutzungsprotokoll kopieren'}</button>
-        <br />
+        <button type="button" class="quiet" onClick={copyUsage}>{copied ? 'Kopiert' : `Nutzungsprotokoll kopieren (${usage.length})`}</button>
         <button
-          class="text-btn"
+          type="button"
+          class="quiet"
           onClick={() => {
             if (window.confirm('Beispieldaten und Fortschritt auf diesem Gerät zurücksetzen?')) onReset();
           }}
         >
           Beispieldaten zurücksetzen
         </button>
-      </div>
+      </section>
     </section>
   );
 }

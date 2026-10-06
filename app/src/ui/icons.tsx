@@ -1,15 +1,6 @@
-/** Four icons, drawn for this app. Stroke follows currentColor. */
+/** Icons, drawn for this app. Stroke follows currentColor. */
 
 const base = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.75, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
-
-/** Progress: a route with two stops. */
-export const RouteIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true" {...base}>
-    <path d="M6 19c0-4 4-5 6-7s6-3 6-7" />
-    <circle cx="6" cy="19" r="2" fill="currentColor" stroke="none" />
-    <circle cx="18" cy="5" r="2" />
-  </svg>
-);
 
 export const PlusIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" {...base}>

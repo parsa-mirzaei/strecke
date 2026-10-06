@@ -3,8 +3,8 @@
  * optional URLs per item. Most items have none, and cards are designed to work without them.
  */
 
-const s = { fill: 'none', stroke: 'currentColor', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
-const accent = { ...s, stroke: 'var(--accent)' } as const;
+const s = { fill: 'none', stroke: 'currentColor', 'stroke-width': 1.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' } as const;
+const accent = { ...s, stroke: 'var(--lamp)' } as const;
 
 const drawings: Record<string, { title: string; svg: preact.JSX.Element }> = {
   verspaetung: {
@@ -40,7 +40,7 @@ const drawings: Record<string, { title: string; svg: preact.JSX.Element }> = {
         <path d="M70 86c22 0 26-46 76-46" {...accent} stroke-width="3" />
         <path d="M70 86h76" {...s} stroke-dasharray="4 7" />
         <circle cx="70" cy="86" r="7" {...s} fill="var(--bg)" />
-        <circle cx="146" cy="40" r="5" fill="var(--accent)" />
+        <circle cx="146" cy="40" r="5" fill="var(--lamp)" />
       </svg>
     ),
   },

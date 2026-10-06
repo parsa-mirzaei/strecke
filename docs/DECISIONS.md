@@ -83,3 +83,23 @@ Newest at the bottom. **[ASK]** = needs the product owner's OK (Scope, Data mode
 **D29 Dedupe key, final rule.** NFC; lower-case; typographic quotes folded; whitespace collapsed; trailing `.!?…` dropped; leading der/die/das only for nouns; leading `sich` only for verbs; umlauts and ß kept. `de`, `en` and `answer_1` must contain a letter.
 
 **D30 Phase 0 cleanup.** The four Phase 0 routines and the gate's test routine are disabled and their prompts replaced with a no-op (originals saved privately in `data/phase0/`); the routines API cannot detach their connectors, so the owner deletes them in the UI. The Phase 0 web app must be archived by the owner (its URL exists only on the phone). The test Sheet and CSV artifacts stay as evidence. Disposable gate spreadsheets (synthetic data) stay until the owner has reviewed the report.
+
+## 2026-10-06 · MVP2: make the product work [OK]
+
+The product owner reset the priority to a usable personal product. The security findings above (D21, D26) stay valid; they no longer block shipping.
+
+**D31 API: Apps Script web app + per-instance token [OK].** The PWA talks to the learner's own Sheet through one Apps Script web app (`bootstrap`, `sync`; `POST`, `text/plain`, token in the body), as in SPEC "API contract". The token is generated per instance and stored only in Script Properties and on the device. This replaces the D24 proposal that the PWA call the Sheets API with the learner's OAuth token: that needs a Google Cloud project and OAuth client per instance and an interactive re-sign-in roughly hourly, which makes "run your own copy" impractical.
+
+**D32 Hardened mode optional [OK].** The vault account and the separate Inbox spreadsheet (D24, D25) become an optional hardened deployment for learners who connect broad-permission AI agents. The default is simple personal mode: one Google account, one Sheet. The code leaves room for hardened mode (the Inbox location is configuration) but MVP2 does not build it.
+
+**D33 Heft is the MVP2 interface [OK].** The feed becomes one vertical scroll of short encounters in a few varying layouts. Each item resolves with one tap and settles into a trail above; the next item is already visible below. Dark-first, calm, typographic. Speaking aloud is an optional invitation, never the default instruction; no typing.
+
+**D34 Scope removed [OK].** The checkpoint card and the Pending screen are removed. Agent suggestions appear in the feed as *Vorschlag* (keep by learning it, or *Nicht für mich*). Self-grading is reduced to one optional *nochmal* after a reveal.
+
+**D35 MVP2 has four slices [OK].**
+1. Heft UI on demo data, usable on the test phone.
+2. The learner's own Google Sheet end to end via Apps Script + token.
+3. One minimal automated ingestion path: an external scheduled AI workflow adds valid rows to the Sheet.
+4. Real vocabulary and one week of actual use.
+
+Not in MVP2 until real use shows they are needed: offline cache with event queue and background sync, hardened mode, two full AI pipelines, deeper brand work. The architecture keeps room for them. These slices replace the Phase 1–7 order for now.

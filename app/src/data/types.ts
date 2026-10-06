@@ -37,10 +37,11 @@ export interface Item {
   origin: 'own' | 'suggestion';
 }
 
-export type CardType = 'meet' | 'listen' | 'recall';
+/** meet = first encounter; choice = pick the meaning or the article; listen = hear, then pick; recall = fill the gap. */
+export type CardType = 'meet' | 'choice' | 'listen' | 'recall';
 
 export interface ItemState {
-  /** 0 new, 1 listen, 2 recall with hint, 3 recall without hint, 4+ rotation. */
+  /** 0 new, 1 recognise (choice or listen), 2 recall with hint, 3 recall without hint, 4+ rotation. */
   stage: number;
   dueAt: number;
   lapses: number;
@@ -51,12 +52,15 @@ export interface ItemState {
 
 export type Grade = 'new' | 'known' | 'good' | 'miss';
 
+/** What happened to one feed item: a grade, dismissed (suggestion), or scrolled past unanswered. */
+export type Outcome = Grade | 'dismiss' | 'skip';
+
 export interface ReviewEvent {
   id: string;
   ts: number;
   itemId: string;
-  card: CardType | 'checkpoint';
-  grade: Grade | 'dismiss';
+  card: CardType;
+  grade: Outcome;
   ms: number;
 }
 

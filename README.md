@@ -1,8 +1,8 @@
 # Strecke
 
-A German micro-practice app for A2–B1 learners. Open it and one practice card is on screen in under two seconds: no session to finish, no due count, no streaks. Answers are spoken aloud and self-graded. Words climb a five-step ladder from *recognise* to *use in a new situation*.
+A German practice app for A2–B1 learners, made for idle minutes. Open it and you are already scrolling through short German encounters: no session to finish, no due count, no streaks. Each item resolves with one silent tap. Words climb a ladder from *recognise* to *use in a new situation*.
 
-**Status:** Phase 0 (risk spike) done. A security gate now runs before any product code: the deterministic import boundary is built and tested ([core/](core)), the identity isolation it rests on is waiting for its last owner steps ([gate report](docs/security/GATE-REPORT.md)). The live page is still the Phase 0 test harness.
+**Status:** MVP2, slice 1 of 4. The live page is the new interface, the *Heft*, running on a bundled sample deck ([design](docs/design/HEFT.md)). Next: connect the learner's own Google Sheet ([decisions D31–D35](docs/DECISIONS.md)).
 
 ## How it works
 

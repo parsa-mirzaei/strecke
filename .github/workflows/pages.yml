@@ -1,5 +1,4 @@
-# Deploys the static site to GitHub Pages on every push to main.
-# Phase 0: publishes spike/web. Phase 3 switches this to the built app (app/dist).
+# Builds the app (app/) and deploys app/dist to GitHub Pages on every push to main.
 name: pages
 
 on:
@@ -24,9 +23,20 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install
+        working-directory: app
+        run: npm ci --ignore-scripts
+      - name: Test and build
+        working-directory: app
+        run: npm test && npm run build
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: spike/web
+          path: app/dist
       - id: deployment
         uses: actions/deploy-pages@v4

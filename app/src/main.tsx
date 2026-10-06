@@ -1,10 +1,14 @@
 import { render } from 'preact';
 import '@fontsource/fira-sans/latin-400.css';
 import '@fontsource/fira-sans/latin-500.css';
-import '@fontsource/fira-sans-condensed/latin-500.css';
+import './styles/fonts.css';
 import './styles/app.css';
 import { App } from './App';
 import { MockAdapter } from './data/adapter';
+import { applyTheme, getTheme, watchSystemTheme } from './ui/theme';
+
+applyTheme(getTheme());
+watchSystemTheme();
 
 // Prototype: local synthetic data only. A Core adapter replaces this after the security gate.
 const adapter = new MockAdapter();

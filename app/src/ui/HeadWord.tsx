@@ -1,13 +1,26 @@
 import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Article } from '../data/types';
 
+const MAX = 2.75;
+const MIN = 1.625;
+
 /**
- * The headword, sized to fit one line where possible: long German compounds switch to the
- * condensed width first, then step down in size, and only then hyphenate.
+ * The headword, sized so its longest word fits on one line: long compounds
+ * (Krankenversicherungskarte) step down in size instead of breaking mid-word.
+ * Tapping it speaks it.
  */
-export function HeadWord({ text, article, plural, onSpeak }: { text: string; article: Article; plural?: string; onSpeak?: () => void }) {
-  const ref = useRef<HTMLButtonElement>(null);
-  const [fit, setFit] = useState({ size: 2.75, condensed: false });
+export function HeadWord({ text, article, plural, onSpeak, hideArticle }: {
+  text: string;
+  article: Article;
+  plural?: string;
+  onSpeak?: () => void;
+  /** Article quiz: the article is the question, so it is not shown yet. */
+  hideArticle?: boolean;
+}) {
+  const ref = useRef<HTMLElement>(null);
+  const isPhrase = /\s/.test(text);
+  const top = isPhrase ? 2 : MAX;
+  const [size, setSize] = useState(top);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -15,23 +28,17 @@ export function HeadWord({ text, article, plural, onSpeak }: { text: string; art
     const measure = () => {
       const box = el.parentElement!.clientWidth;
       const probe = document.createElement('span');
-      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-weight:500;letter-spacing:-0.02em';
+      probe.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font-family:var(--serif);font-weight:560';
       el.parentElement!.appendChild(probe);
-      const widthAt = (size: number, condensed: boolean) => {
-        probe.style.fontFamily = condensed ? 'var(--font-cond)' : 'var(--font)';
-        probe.style.fontSize = `${size}rem`;
-        // The longest word decides; phrases may wrap between words.
-        const longest = text.split(/\s+/).sort((a, b) => b.length - a.length)[0] ?? text;
-        probe.textContent = longest;
-        return probe.getBoundingClientRect().width;
-      };
-      let next = { size: 2.75, condensed: false };
-      if (widthAt(2.75, false) > box) {
-        next = { size: 2.75, condensed: true };
-        for (let s = 2.75; s >= 1.75 && widthAt(s, true) > box; s -= 0.125) next = { size: s - 0.125, condensed: true };
+      // The longest word decides; phrases may wrap between words.
+      probe.textContent = text.split(/\s+/).sort((a, b) => b.length - a.length)[0] ?? text;
+      let s = top;
+      for (; s > MIN; s -= 0.125) {
+        probe.style.fontSize = `${s}rem`;
+        if (probe.getBoundingClientRect().width <= box) break;
       }
       probe.remove();
-      setFit((prev) => (prev.size === next.size && prev.condensed === next.condensed ? prev : next));
+      setSize(s);
     };
     measure();
     // Re-measure once the web font has loaded and on rotation.
@@ -41,22 +48,24 @@ export function HeadWord({ text, article, plural, onSpeak }: { text: string; art
     return () => ro.disconnect();
   }, [text]);
 
-  const isPhrase = /\s/.test(text);
+  const label = `${article && !hideArticle ? article + ' ' : ''}${text}`;
   return (
-    <h2 class="head">
-      {article && <span class={`head-article art-${article}`}>{article}</span>}
-      <button
-        ref={ref}
-        type="button"
-        class={fit.condensed ? 'headword is-condensed' : 'headword'}
-        style={{ '--hw-size': `${isPhrase ? Math.min(fit.size, 2.125) : fit.size}rem` }}
-        lang="de"
-        onClick={onSpeak}
-        aria-label={`${article ? article + ' ' : ''}${text}, anhören`}
-      >
-        {text}
-      </button>
-      {plural && <span class="meta">{plural === 'nur Plural' ? 'nur Plural' : `Plural: ${plural}`}</span>}
-    </h2>
+    <div class="head">
+      {article && (
+        <span class={hideArticle ? 'head-article is-unknown' : `head-article art-${article}`}>
+          {hideArticle ? ' ' : article}
+        </span>
+      )}
+      {onSpeak ? (
+        <button ref={ref as preact.Ref<HTMLButtonElement>} type="button" class="headword" style={{ '--hw-size': `${size}rem` }} lang="de" onClick={onSpeak} aria-label={`${label}, anhören`}>
+          {text}
+        </button>
+      ) : (
+        <span ref={ref as preact.Ref<HTMLSpanElement>} class="headword" style={{ '--hw-size': `${size}rem` }} lang="de">
+          {text}
+        </span>
+      )}
+      {plural && <span class="head-meta">{plural === 'nur Plural' ? 'nur Plural' : `Plural ${plural}`}</span>}
+    </div>
   );
 }

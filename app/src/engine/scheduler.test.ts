@@ -12,18 +12,25 @@ const ctx = (over: Partial<FeedContext> = {}): FeedContext => ({
 });
 
 describe('card type per ladder stage', () => {
-  it('0 meet, 1 listen, 2 recall with hint, 3 recall without hint on the second cloze', () => {
+  it('0 meet, 1 recognise, 2 recall with hint, 3 recall without hint on the second cloze', () => {
     expect(cardFor(item, st(0), true).type).toBe('meet');
-    expect(cardFor(item, st(1), true).type).toBe('listen');
+    expect(cardFor(item, st(1, { reps: 1 }), true).type).toBe('choice');
+    expect(cardFor(item, st(1, { reps: 2 }), true).type).toBe('listen');
     expect(cardFor(item, st(2), true)).toMatchObject({ type: 'recall', cloze: 1, hint: true });
     expect(cardFor(item, st(3), true)).toMatchObject({ type: 'recall', cloze: 2, hint: false });
   });
-  it('4+ rotates listen and recall', () => {
-    expect(cardFor(item, st(4, { reps: 2 }), true).type).toBe('listen');
-    expect(cardFor(item, st(4, { reps: 3 }), true).type).toBe('recall');
+  it('4+ is mostly recall, every third review a listen', () => {
+    expect(cardFor(item, st(4, { reps: 3 }), true).type).toBe('listen');
+    expect(cardFor(item, st(4, { reps: 4 }), true).type).toBe('recall');
+    expect(cardFor(item, st(4, { reps: 5 }), true).type).toBe('recall');
   });
-  it('without a German voice, listen becomes recall', () => {
-    expect(cardFor(item, st(1), false)).toMatchObject({ type: 'recall', hint: true });
+  it('stage 1 is silent first: right after meeting, a choice; nouns ask for the article', () => {
+    expect(cardFor(item, st(1, { reps: 1 }), true)).toMatchObject({ type: 'choice', variant: 'article' });
+    const verb = MOCK_ITEMS.find((i) => i.id === 'm02')!;
+    expect(cardFor(verb, st(1, { reps: 1 }), true)).toMatchObject({ type: 'choice', variant: 'meaning' });
+  });
+  it('without a German voice, listen becomes a silent choice', () => {
+    expect(cardFor(item, st(1, { reps: 2 }), false).type).toBe('choice');
   });
 });
 

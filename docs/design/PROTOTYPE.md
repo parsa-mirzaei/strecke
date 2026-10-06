@@ -1,5 +1,7 @@
 # Feed prototype: design plan
 
+> Superseded by [HEFT.md](HEFT.md) (MVP2, 2026-10-06). Kept as the record of the first prototype.
+
 Frontend prototype on synthetic data. Question: **would the learner open Strecke instead of a social feed in an idle minute?** No Core, no Inbox, no network.
 
 ## A. The current page (Phase 0 spike)

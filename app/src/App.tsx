@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { speech, type VoiceStatus } from './audio/tts';
 import type { DataAdapter, Snapshot } from './data/adapter';
 import type { UsageEntry } from './data/types';
-import { useFeed } from './state/useFeed';
+import { useFeed, type Feed } from './state/useFeed';
 import { CaptureSheet } from './ui/CaptureSheet';
-import { FeedView } from './ui/FeedView';
+import { Heft } from './ui/Heft';
 import { ProgressPanel } from './ui/ProgressPanel';
 
 type Overlay = 'progress' | 'capture' | null;
 
-/** Overlays sit on top of the feed; the Android back button closes them. */
+/** Overlays sit on top of the Heft; the Android back button closes them. */
 function useOverlay() {
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [leaving, setLeaving] = useState(false);
@@ -46,42 +46,31 @@ function useVoice(): VoiceStatus {
   return status;
 }
 
-function useOnline(): boolean {
-  const [online, setOnline] = useState(navigator.onLine);
-  useEffect(() => {
-    const on = () => setOnline(true);
-    const off = () => setOnline(false);
-    window.addEventListener('online', on);
-    window.addEventListener('offline', off);
-    return () => {
-      window.removeEventListener('online', on);
-      window.removeEventListener('offline', off);
-    };
-  }, []);
-  return online;
-}
-
-/** Usage log for the real-life test: opens, seconds and cards per open. Local only. */
-function useUsageLog(adapter: DataAdapter, initial: UsageEntry[], cards: () => number) {
+/**
+ * Usage log for the real-life test: opens, seconds and items per open. Local only.
+ * Leaving the app also settles the encounter in front, so a pending answer is never lost.
+ */
+function useVisits(adapter: DataAdapter, initial: UsageEntry[], feed: Feed) {
   const [usage, setUsage] = useState(initial);
   const log = useRef(initial);
   const openAt = useRef(Date.now());
-  const cardsAtOpen = useRef(0);
+  const atOpen = useRef(0);
+  const feedRef = useRef(feed);
+  feedRef.current = feed;
 
   useEffect(() => {
-    const close = () => {
-      const entry = { open: openAt.current, close: Date.now(), cards: cards() - cardsAtOpen.current };
-      log.current = [...log.current, entry];
-      adapter.saveUsage(log.current);
-      setUsage(log.current);
-    };
     const onVis = () => {
+      const f = feedRef.current;
       if (document.visibilityState === 'hidden') {
-        close();
         speech.stop();
+        f.settleActive();
+        const entry = { open: openAt.current, close: Date.now(), cards: f.cardsThisVisit() - atOpen.current };
+        log.current = [...log.current, entry];
+        adapter.saveUsage(log.current);
+        setUsage(log.current);
       } else {
         openAt.current = Date.now();
-        cardsAtOpen.current = cards();
+        atOpen.current = f.cardsThisVisit();
       }
     };
     document.addEventListener('visibilitychange', onVis);
@@ -94,15 +83,15 @@ export function App({ adapter, snapshot }: { adapter: DataAdapter; snapshot: Sna
   const voice = useVoice();
   const canListen = voice === 'ready' || voice === 'loading';
   const feed = useFeed(adapter, snapshot, canListen);
-  const online = useOnline();
-  const usage = useUsageLog(adapter, snapshot.usage, feed.cardsThisVisit);
+  const usage = useVisits(adapter, snapshot.usage, feed);
   const { overlay, leaving, open, close } = useOverlay();
 
   return (
     <div class="app">
-      <FeedView
+      <Heft
         feed={feed}
         canListen={voice === 'ready'}
+        demo={adapter.kind === 'mock'}
         onOpenProgress={() => open('progress')}
         onOpenCapture={() => open('capture')}
       />
@@ -110,7 +99,6 @@ export function App({ adapter, snapshot }: { adapter: DataAdapter; snapshot: Sna
         <ProgressPanel
           feed={feed}
           voice={voice}
-          online={online}
           usage={usage}
           leaving={leaving}
           onClose={close}

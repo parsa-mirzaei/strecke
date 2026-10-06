@@ -80,6 +80,8 @@ function read(): Stored | null {
 export class MockAdapter implements DataAdapter {
   readonly kind = 'mock' as const;
   private data: Stored = { states: {}, events: [], captures: [], usage: [] };
+  /** After reset, nothing is written again: the page is about to reload. */
+  private cleared = false;
 
   async load(): Promise<Snapshot> {
     const stored = read();
@@ -113,6 +115,7 @@ export class MockAdapter implements DataAdapter {
   }
 
   reset(): void {
+    this.cleared = true;
     try {
       localStorage.removeItem(KEY);
     } catch {
@@ -121,6 +124,7 @@ export class MockAdapter implements DataAdapter {
   }
 
   private flush(): void {
+    if (this.cleared) return;
     try {
       localStorage.setItem(KEY, JSON.stringify(this.data));
     } catch {

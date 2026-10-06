@@ -3,18 +3,28 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef1f4" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1621" />
-    <meta name="description" content="Strecke: eine Karte Deutsch, sofort. Prototyp mit Beispieldaten." />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#16171b" />
+    <meta name="description" content="Strecke: Deutsch für zwischendurch. Öffnen, und du bist schon dabei." />
     <title>Strecke</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
+    <script>
+      // Theme before first paint (dark first; see src/ui/theme.ts). No flash on open.
+      try {
+        var t = localStorage.getItem('strecke.theme');
+        var light = t === 'light' || (t === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
+        if (light) {
+          document.documentElement.classList.add('boot-light');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f1f0ec');
+        }
+      } catch (e) {}
+    </script>
     <style>
-      /* First paint before the bundle: correct background in both themes, no white flash. */
-      html, body { margin: 0; background: #eef1f4; color: #5a6778; font-family: system-ui, sans-serif; }
-      @media (prefers-color-scheme: dark) { html, body { background: #0e1621; color: #92a0b1; } }
+      /* First paint before the bundle, in the right theme. */
+      html, body { margin: 0; background: #16171b; color: #8c877c; font-family: system-ui, sans-serif; }
+      .boot-light, .boot-light body { background: #f1f0ec; color: #6b675f; }
       .boot { display: grid; place-items: center; height: 100dvh; font-size: 0.875rem; }
     </style>
   </head>

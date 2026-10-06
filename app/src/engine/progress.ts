@@ -23,33 +23,23 @@ function startOfDay(ts: number): number {
   return d.getTime();
 }
 
-export interface DayStats {
-  cards: number;
-  /** Recall cards answered "Hatte ich": sentences the learner produced. */
-  said: number;
-}
-
-export function todayStats(events: ReviewEvent[], now: number): DayStats {
-  const from = startOfDay(now);
-  const today = events.filter((e) => e.ts >= from && e.card !== 'checkpoint');
-  return {
-    cards: today.length,
-    said: today.filter((e) => e.card === 'recall' && e.grade === 'good').length,
-  };
-}
-
 export function newToday(events: ReviewEvent[], now: number): number {
   const from = startOfDay(now);
   return events.filter((e) => e.ts >= from && e.card === 'meet').length;
 }
 
-/** Days this month with at least one card. Counted, never displayed as a chain. */
-export function daysThisMonth(events: ReviewEvent[], now: number): number {
-  const d = new Date(now);
-  const days = new Set<number>();
-  for (const e of events) {
-    const t = new Date(e.ts);
-    if (t.getFullYear() === d.getFullYear() && t.getMonth() === d.getMonth()) days.add(t.getDate());
+/** The last few items answered before this visit, newest last: the trail the feed opens under. */
+export function lastAnswered(events: ReviewEvent[], items: Item[], n: number): Item[] {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  const seen = new Set<string>();
+  const out: Item[] = [];
+  for (let k = events.length - 1; k >= 0 && out.length < n; k--) {
+    const e = events[k]!;
+    if (e.grade === 'skip' || e.grade === 'dismiss' || seen.has(e.itemId)) continue;
+    const item = byId.get(e.itemId);
+    if (!item) continue;
+    seen.add(e.itemId);
+    out.push(item);
   }
-  return days.size;
+  return out.reverse();
 }

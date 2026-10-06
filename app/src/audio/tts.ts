@@ -1,8 +1,7 @@
 /**
  * Browser text-to-speech, German only. One shared instance.
  * Rules from the spec: load voices via `voiceschanged` with a timeout fallback, and start speech
- * only from a user gesture (the first card of a visit waits for a tap; later cards are started from
- * the tap that answered the previous one).
+ * only from a user gesture (a tap on a play or speaker control; nothing plays by itself).
  */
 
 export type VoiceStatus = 'loading' | 'ready' | 'none' | 'unsupported';
@@ -22,6 +21,8 @@ class Speech {
   private listeners = new Set<Listener>();
   private timers: number[] = [];
   private token = 0;
+  /** onEnd of the utterance in progress; called when it ends or is interrupted. */
+  private ending: (() => void) | undefined;
 
   constructor() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -66,6 +67,7 @@ class Speech {
     }
     this.stop();
     const token = ++this.token;
+    this.ending = opts.onEnd;
     const synth = window.speechSynthesis;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = 'de-DE';
@@ -107,6 +109,7 @@ class Speech {
     const end = () => {
       if (token !== this.token) return;
       this.clearTimers();
+      this.ending = undefined;
       opts.onEnd?.();
     };
     u.onend = end;
@@ -118,6 +121,9 @@ class Speech {
     this.token++;
     this.clearTimers();
     if (this.status !== 'unsupported') window.speechSynthesis.cancel();
+    const ending = this.ending;
+    this.ending = undefined;
+    ending?.();
   }
 
   private clearTimers() {

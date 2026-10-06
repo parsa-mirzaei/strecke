@@ -2,13 +2,13 @@ import type { CardType, Grade, Item, ItemState } from '../data/types';
 
 /**
  * Prototype scheduler: a small, pure version of the spec's ladder.
- *   0 Meet → 1 Listen → 2 Recall with hint → 3 Recall without hint → 4+ Listen/Recall rotation.
+ *   0 Meet → 1 Recognise (choice or listen) → 2 Recall with hint → 3 Recall without hint
+ *   → 4+ Recall, with every third review a Listen.
  * No FSRS, no statistics. Good enough to make the feed feel alive during a real-life test.
  */
 
 export const NEW_PER_DAY = 6;
 export const NEW_EVERY = 4;
-export const CHECKPOINT_EVERY = 8;
 export const SAYABLE_STAGE = 3;
 
 const MIN = 60_000;
@@ -22,6 +22,8 @@ export interface Card {
   /** Recall only: which cloze, and whether the English hint shows. */
   cloze: 1 | 2;
   hint: boolean;
+  /** Choice only: pick the English meaning, or the article of a noun. */
+  variant?: 'meaning' | 'article';
 }
 
 export interface FeedContext {
@@ -35,7 +37,7 @@ export interface FeedContext {
   reinsert: { itemId: string; at: number }[];
   newToday: number;
   missStreak: number;
-  /** False when the device has no German voice: Listen cards become Recall. */
+  /** False when the device has no German voice: Listen cards become silent choices. */
   canListen: boolean;
 }
 
@@ -47,17 +49,23 @@ export function cardFor(item: Item, state: ItemState, canListen: boolean): Card 
   const hasSecond = !!item.cloze2;
   const recall = (cloze: 1 | 2, hint: boolean): Card => ({ itemId: item.id, type: 'recall', cloze, hint });
   const listen: Card = { itemId: item.id, type: 'listen', cloze: 1, hint: false };
+  const choice: Card = {
+    itemId: item.id, type: 'choice', cloze: 1, hint: false,
+    variant: item.pos === 'noun' && item.article ? 'article' : 'meaning',
+  };
   switch (state.stage) {
     case 0:
       return { itemId: item.id, type: 'meet', cloze: 1, hint: false };
     case 1:
-      return canListen ? listen : recall(1, true);
+      // Silent first: the first recognition right after meeting is a choice; listening alternates in.
+      return canListen && state.reps % 2 === 0 ? listen : choice;
     case 2:
       return recall(1, true);
     case 3:
       return recall(hasSecond ? 2 : 1, false);
     default:
-      return state.reps % 2 === 0 && canListen ? listen : recall(hasSecond ? 2 : 1, false);
+      // Mostly silent: one in three reviews at this level is a listening one.
+      return state.reps % 3 === 0 && canListen ? listen : recall(hasSecond ? 2 : 1, false);
   }
 }
 

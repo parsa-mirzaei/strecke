@@ -9,7 +9,7 @@ interface Props {
 
 /**
  * Capture: hear a word, keep it in seconds. One field, an optional situation, save.
- * Prototype: stored on the device only. Enrichment of captures is a separate, later stream.
+ * Demo: stored on the device only. Enrichment of captures is a separate stream.
  */
 export function CaptureSheet({ leaving, onSave, onClose }: Props) {
   const [text, setText] = useState('');
@@ -35,7 +35,7 @@ export function CaptureSheet({ leaving, onSave, onClose }: Props) {
       <form class={leaving ? 'sheet is-leaving' : 'sheet'} onSubmit={save} role="dialog" aria-modal="true" aria-labelledby="cap-title">
         <div class="sheet-grip" aria-hidden="true" />
         <h2 id="cap-title">Wort festhalten</h2>
-        <p>Gehört, gelesen, gebraucht? Schreib es auf, die Karte entsteht später.</p>
+        <p>Gehört, gelesen, gebraucht? Halt es fest. Satz und Übung kommen später dazu.</p>
         <label class="sr-only" for="cap-input">Wort oder Ausdruck</label>
         <input
           id="cap-input"
