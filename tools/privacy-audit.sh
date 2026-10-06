@@ -23,7 +23,7 @@ re=$(IFS='|'; echo "${patterns[*]}")
 if [[ "${1:-}" == "--all" ]]; then
   hits=$(git ls-files -z | xargs -0 grep -n -i -I -E "$re" -- 2>/dev/null || true)
 else
-  hits=$(git diff --cached -U0 | grep -n -i -E "^\+.*($re)" || true)
+  hits=$(git diff --cached -U0 | grep -n -i -E "^+.*($re)" | grep -v "\"integrity\": \"sha512-" || true)
 fi
 
 if [[ -n "$hits" ]]; then

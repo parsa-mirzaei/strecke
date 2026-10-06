@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#eef1f4" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1621" />
+    <meta name="description" content="Strecke: eine Karte Deutsch, sofort. Prototyp mit Beispieldaten." />
+    <title>Strecke</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon-192.png" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <style>
+      /* First paint before the bundle: correct background in both themes, no white flash. */
+      html, body { margin: 0; background: #eef1f4; color: #5a6778; font-family: system-ui, sans-serif; }
+      @media (prefers-color-scheme: dark) { html, body { background: #0e1621; color: #92a0b1; } }
+      .boot { display: grid; place-items: center; height: 100dvh; font-size: 0.875rem; }
+    </style>
+  </head>
+  <body>
+    <div id="app"><div class="boot">Strecke</div></div>
+    <noscript>Strecke braucht JavaScript.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
