@@ -8,16 +8,16 @@ Strecke is an offline-first PWA for A2–B1 German learners. It opens straight i
 
 | Component | Where | Status | Role |
 | --- | --- | --- | --- |
-| Security core | [core/src/](../core/src) | Built, 124 tests; new record columns in Phase B (D38) | Pure TypeScript, no runtime dependencies. Shared by the PWA and the Apps Script backend. Everything that decides whether data may enter or change Core |
+| Security core | [core/src/](../core/src) | Built; record columns, Inbox v2 and the `seed` actor added in Phase B (D38, D48) | Pure TypeScript, no runtime dependencies. Shared by the PWA and the Apps Script backend. Everything that decides whether data may enter or change Core |
 | Inbox setup | [apps-script/inbox-setup.gs](../apps-script/inbox-setup.gs) | Built, not yet run | Creates the Inbox tabs and locks all but the agent columns |
-| Exercise generator | `core/src/` | Phase B | `exercisesFor(word, allWords)`: exercises and distractors derived from a record's columns; compat layer for legacy prompts/clozes ([SPEC "Exercises"](SPEC.md#exercises-generated-from-the-record)) |
-| Scheduler | `core/src/` | Phase B | Pure fold over the event log: stage ladder (which exercise) + FSRS-5 memory model (when); *Dein Weg* evidence functions |
-| Data adapters | `app/src/data/` | Phase B (`demo`, `local`), Phase E (`sheet`) | One `DataAdapter` interface; UI and scheduler never know the source. `sheet` speaks the D31 API and is tested against fakes before any real Sheet |
+| Exercise generator | [core/src/exercises.ts](../core/src/exercises.ts), [record.ts](../core/src/record.ts), [typing.ts](../core/src/typing.ts) | Built (Phase B) | `exercisesFor(word, allWords)`: exercises and distractors derived from a record's columns; compat layer for legacy prompts/clozes ([SPEC "Exercises"](SPEC.md#exercises-generated-from-the-record)) |
+| Scheduler | [core/src/scheduler.ts](../core/src/scheduler.ts), [fsrs.ts](../core/src/fsrs.ts) | Built (Phase B); *Dein Weg* evidence in Phase D | Pure fold over the event log: stage ladder (which exercise) + FSRS-5 memory model (when); card picker |
+| Data adapters | [core/src/data/](../core/src/data) | `demo`, `local` built (Phase B); IndexedDB store in Phase C; `sheet` in Phase E | One `DataAdapter` interface; UI and scheduler never know the source. `sheet` speaks the D31 API and is tested against fakes before any real Sheet |
 | Backend | `apps-script/` | Phase E | Web app (`bootstrap`, `sync`, per-copy token, D31/D45) plus triggers: importer (hourly), agent-view publisher, daily backup. Bound to Core: in the learner's account (simple mode) or the vault account (hardened mode) |
 | PWA | `app/` | Phase C–D (Station UI; the Heft prototype of MVP2 slice 1 is live until then) | Practice, Dein Weg, Wörter, Hinzufügen, Vorschläge, Einstellungen; IndexedDB cache, event queue. Reaches Core through the `sheet` adapter |
 | Agent contract and routine | [agents/contract.md](../agents/contract.md), [agents/routine.md](../agents/routine.md) | Built (docs) | What the weekly agent is told, and the routine configuration that limits it |
 | Phase 0 spike | `spike/` | Retired | Throwaway test page and endpoint from the risk spike |
-| Tools | [tools/](../tools) | Built | Privacy audit before commits; sheet hash manifests for recovery checks; Phase 0 validators |
+| Tools | [tools/](../tools) | Built | Privacy audit before commits; `seed-check.ts` for seed files; sheet hash manifests for recovery checks; Phase 0 validators |
 
 ### Security core modules
 
@@ -80,6 +80,8 @@ Details, permission matrix and residual risks: [security/ARCHITECTURE.md](securi
 ```bash
 npm install
 npm test
+npm run coverage
 npm run typecheck
+npm run seed-check -- data/seed/seed-50.csv   # the seed file itself is gitignored
 bash tools/privacy-audit.sh --all
 ```

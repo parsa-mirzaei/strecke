@@ -169,3 +169,32 @@ The product owner's brief of 2026-10-07 changes the interface, the exercise mode
 **D46 Data adapters.** The UI and the scheduler talk only to a `DataAdapter` interface with three implementations: `demo` (bundled ~20 synthetic items, no sync), `local` (IndexedDB + fixtures, for development and tests) and `sheet` (real Core). The `sheet` adapter speaks the D31 API (D45). It is unit-tested against fakes and is never connected to a real Sheet without the owner's explicit go; for the owner's hardened Core, the isolation tests I-1..I-6 must also pass first.
 
 **D47 Starter seed.** `data/seed/seed-50.csv` holds about 50 general A2–B1 records in the new layout: about 2/3 core, 1/3 chunks, with a few deliberately thin rows. It is gitignored, as is all seed content. `tools/seed-check.ts` (committed, no content) validates any seed file with the same validator and prints a report. The seed loads through the importer and writer into a local/fixture Core, and into the real Core only in Phase F with the owner's go. The demo deck is regenerated in the new layout (synthetic, committed). **The learner's own Anki words (D17/D19) are added in Phase F [OK]:** converted to the new column layout, through the importer, into the private Sheet only, after the starter records.
+
+## 2026-10-07 · Phase B: data layer and generators
+
+**D48 Engineering choices made while building Phase B.**
+- **Plural is the full form** (`Haltestellen`), not an ending. An ending like `-n` starts with `-`, which the formula-injection rule rightly rejects; the full form is also clearer for learners and for speech. For the same reason, notes avoid `+` and `=` (`zuständig für (Akkusativ)`). The content charset of the security core is unchanged.
+- **Minimum record:** `de` + `en`, plus `pos`, or an article (which implies a noun). The learner's own rows (seed, hand-written) may leave `domain` empty. Agent rows (Inbox v2) must bring `pos`, `domain` and a first example with translation.
+- **Inbox v2 header:** 24 agent columns A:X, then `status`, `reason`, `word_id` in Y:AA. `inbox-setup.gs` follows it. v1 fingerprints are unchanged; v2 fingerprints are version-prefixed, so the two never collide. v2 rows store record columns, with no prompts; v1 rows keep their prompts, which the compat layer reads.
+- **Writer:**
+  - It re-checks the record rules on every word append, for every actor.
+  - A new actor, `seed`, may only append active words with `source = seed` and `start_stage` 0–2.
+  - New event types: `seen`, `suspend`.
+  - `word_state` gains `stability`, `difficulty` and `reps`.
+  - `config.retention` is a decimal between 0.70 and 0.97; `checkpoint_every` is no longer accepted.
+- **Ladder details:**
+  - The gate depends only on the word's own columns, so replay never depends on other words.
+  - Hören is never a gate (it depends on the device's voice).
+  - At stage 5 every miss counts (→ 3).
+  - Every third review is a non-gate exercise for variety.
+- **Ratings:** "slow" means above a per-exercise time (6–20 s, `SLOW_MS`); these are first guesses, to be tuned from logged `ms`. A Tippen near miss needs an answer of 3 or more characters.
+- **Practice never runs out.** When rules collide (tiny decks, everything resting), they relax in a fixed order: a new word beyond the daily pace (not during a backlog pause), a third Karte in a row, a word from the last three cards (never the very last), then a resting word.
+- **Form distractors** prefer the same ending (`kümmere` with `überlege`), so grammar does not give the answer away.
+- **Adapters live in `core/src/data/`** (pure TypeScript, tested in Node). The browser's IndexedDB store and the wiring come in Phase C. The local adapter keeps a full Core and writes through the same writer and seed path as production.
+- **Tooling:**
+  - `@vitest/coverage-v8` 3.2.7 is added as a dev dependency (`npm run coverage`).
+  - `erasableSyntaxOnly` is on, so `tools/seed-check.ts` runs directly on Node 24 (`npm run seed-check -- <file>`).
+  - `npm audit` reports advisories in Vitest 3.2.7 (test tooling only; nothing ships). The fix is a major upgrade, to be done on its own.
+- **Known limits:**
+  - In a very small deck, a part of speech with fewer than three words gets no Lücke or Bedeutung, so its words can stay at the stage before that gate until the deck grows.
+  - One memory state per word (see D41).

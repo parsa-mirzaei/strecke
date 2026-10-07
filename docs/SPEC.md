@@ -106,11 +106,11 @@ Agents append only to `inbox`; the normalizer, the phone and the learner write e
 | `captures` | capture\_id, ts, text, domain, context, status (new/processed/rejected) | App (new), normalizer (processed) |
 | `config` | key, value | Learner by hand |
 
-**Optional record columns on `words`** (D38). A missing column never breaks anything; it only means fewer exercises. The minimum record is `de`, `en`, `pos`, `domain`, plus `article` for nouns.
+**Optional record columns on `words`** (D38). A missing column never breaks anything; it only means fewer exercises. The minimum record is `de` and `en`, plus `pos` (an article alone implies a noun). `domain` may stay empty on the learner's own rows; agent rows need `pos`, `domain` and a first example with translation (D48).
 
 | Column | Meaning |
 | --- | --- |
-| `plural` | plural ending or form (`-en`, `Anschlüsse`, `nur Plural`) |
+| `plural` | the full plural form (`Haltestellen`, `Anschlüsse`); never an ending such as `-en`, because a leading dash is a formula prefix (D48) |
 | `example_de`, `example_en` | one natural example sentence (≤ 14 words) and its translation |
 | `example_form` | the exact surface form of the word inside `example_de`; empty means `de`. The exercise blanks this form. For chunks it is the chunk |
 | `example_2_de`, `example_2_en`, `example_2_form` | a second example in a different everyday situation |
@@ -164,7 +164,7 @@ Demo mode never calls the API.
 | **Bedeutung** | `de`, `en`, 2 distractors | Picks the meaning out of three | 1+ |
 | **Lücke** | `example_de` containing the form, 2 distractors | Picks the form for the amber blank in the sentence (translation shown at stages 1–2) | 1–3 |
 | **Präposition** | `prep` | Picks the preposition for `zuständig ___` (or the example with the preposition blanked) | 2+ |
-| **Hören** | `example_de` or `de`, a German voice | Hears the sentence (speech starts inside the tap), picks the meaning; *Gerade kein Ton? Text zeigen* | 2+ |
+| **Hören** | `example_de` or `de`, a German voice, 2 meaning distractors | Hears the sentence (speech starts inside the tap), picks the meaning; *Gerade kein Ton? Text zeigen* | 2+ |
 | **Tippen** | `example_de` containing the form | Types the form into the blank; forgiving matching (D40) | 3+ |
 | **Zweiter Kontext** | `example_2_de` containing its form, 2 distractors | A Lücke in the second, unseen situation, no translation | 4+ |
 
@@ -186,12 +186,12 @@ Two parts, both pure functions of the append-only event log plus each word's `st
 | --- | --- | --- | --- | --- |
 | 0 | Neu | Karte (seen, not graded) | → 1; short recall 3–5 cards later in the same visit | — |
 | 1 | Erkennen | Lücke (else Artikel, else Bedeutung) | → 2 | stays 1, back in 3–5 cards |
-| 2 | Abrufen | Lücke with translation, or Präposition / Hören (else the stage-1 gate) | → 3 | → 1, back in 3–5 cards, lapses +1 |
-| 3 | Hören & Tippen | Tippen (else Hören, else Lücke) | → 4 | → 2, back in 3–5 cards, lapses +1 |
-| 4 | Anwenden | Zweiter Kontext (else Tippen) | → 5 | → 3, back in 3–5 cards, lapses +1 |
-| 5 | Sicher | rotates Tippen, Hören, Zweiter Kontext, Präposition | stays 5 | → 3, lapses +1 |
+| 2 | Abrufen | Lücke with translation, or Präposition (else the stage-1 gate) | → 3 | → 1, back in 3–5 cards, lapses +1 |
+| 3 | Hören & Tippen | Tippen (else the stage-2 gate) | → 4 | → 2, back in 3–5 cards, lapses +1 |
+| 4 | Anwenden | Zweiter Kontext (else the stage-3 gate) | → 5 | → 3, back in 3–5 cards, lapses +1 |
+| 5 | Sicher | rotates Tippen, Hören, Zweiter Kontext, Präposition (every miss counts) | stays 5 | → 3, lapses +1 |
 
-A miss on a non-gate exercise lowers the stage by at most one, and never below 1. A word with `start_stage > 0` enters at that stage and skips Karte.
+A miss on a non-gate exercise lowers the stage by at most one, and never below 1. A word with `start_stage > 0` enters at that stage and skips Karte. Hören is never a gate, because whether it can be shown depends on the device's voice. The gate depends only on the word's own columns, so a replay never depends on other words. Below stage 5, every third review of a word is a non-gate exercise for variety; it updates the memory model but does not promote.
 
 **Memory model (FSRS-5).**
 - Each word carries stability, difficulty and last review.
@@ -212,7 +212,10 @@ A miss on a non-gate exercise lowers the stage by at most one, and never below 1
 1. A same-visit reinsertion whose turn has come (a Karte's first recall, or a missed item).
 2. Due words, lowest predicted recall first.
 3. A new word, if fewer than `new_per_day` were introduced today and the number of due words is below `backlog_pause`. The pause is silent; the UI never shows a backlog. New words follow the 2/3 core, 1/3 chunk mix.
-4. Nothing due: the word with the lowest predicted recall. The memory model handles early reviews, since stability grows little when recall is still high. Practice never runs out.
+4. Nothing due: the word with the lowest predicted recall. The memory model handles early reviews, since stability grows little when recall is still high.
+5. Practice never runs out. When the rules below cannot all hold, they are relaxed in this order, least harmful first: a new word beyond today's pace (never during a backlog pause), a third Karte in a row, a word from the last three cards (never the very last one), and finally a resting word.
+
+Pending suggestions appear only as a `VORSCHLAG` Karte, at most once every five cards, and are not scheduled further until kept.
 
 **Constraints on the sequence:**
 
