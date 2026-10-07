@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { agentView, fingerprint } from '../src/importer.ts';
-import { INBOX_COLUMNS, LIMITS } from '../src/schema.ts';
+import { INBOX_V1_COLUMNS as INBOX_COLUMNS, LIMITS } from '../src/schema.ts';
 import { verifyAudit } from '../src/audit.ts';
 import { NOW, LATER, cells, goodRow, runImport, seededCore, sheet } from './helpers.ts';
 
@@ -177,7 +177,7 @@ describe('structure attacks', () => {
   it('every row seen is logged in Core inbox_log with its fingerprint (audit + recovery)', () => {
     const { core, res } = runImport(seededCore(), sheet(goodRow(), goodRow({ pos: 'adverb' })));
     expect(core.inbox_log.map((r) => r.outcome)).toEqual(['imported', 'invalid']);
-    expect(core.inbox_log[0]!.fingerprint).toBe(fingerprint(goodRow()));
+    expect(core.inbox_log[0]!.fingerprint).toBe(fingerprint(goodRow(), 1));
     expect(res.rows[1]!.reason).toContain('bad_enum:pos');
   });
 });

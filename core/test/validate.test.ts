@@ -5,7 +5,7 @@ import { dedupeKey } from '../src/text.ts';
 import { validateInboxRow } from '../src/validate.ts';
 import { goodRow } from './helpers.ts';
 
-const reasons = (over: Parameters<typeof goodRow>[0]) => validateInboxRow(goodRow(over));
+const reasons = (over: Parameters<typeof goodRow>[0]) => validateInboxRow(goodRow(over), 0, 1);
 
 describe('sha256 (pure TS) matches node:crypto', () => {
   for (const s of ['', 'abc', 'Prüfung ß „Das klingt gut.“', 'x'.repeat(1000), '😀 emoji']) {
@@ -31,7 +31,7 @@ describe('dedupe key', () => {
 });
 
 describe('validator accepts a clean row', () => {
-  it('no reasons', () => expect(validateInboxRow(goodRow())).toEqual([]));
+  it('no reasons', () => expect(validateInboxRow(goodRow(), 0, 1)).toEqual([]));
   it('chunk row', () =>
     expect(reasons({ de: 'Kein Problem.', article: '', en: 'No problem.', pos: 'phrase', tier: 'chunk', domain: 'smalltalk',
       cloze_1: 'Kannst du mir kurz helfen? – ___', answer_1: 'Kein Problem.', cloze_2: '', answer_2: '' })).toEqual([]));

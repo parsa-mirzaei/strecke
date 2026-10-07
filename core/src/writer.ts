@@ -18,6 +18,7 @@ import {
   ARTICLES, CORE_TABS, DOMAINS, ID_PATTERN, LIMITS, POS, TIERS, WORD_STATUSES, type Core, type CoreTab, type Row,
 } from './schema.ts';
 import { coreCellProblems, contentProblems, dedupeKey } from './text.ts';
+import { recordProblems } from './record.ts';
 
 export type AppendTab = 'words' | 'prompts' | 'events' | 'captures' | 'inbox_log';
 type WordStatus = (typeof WORD_STATUSES)[number];
@@ -40,6 +41,7 @@ const PERMISSIONS: Record<Actor, { append: AppendTab[]; ops: Op['op'][] }> = {
   app: { append: ['events', 'captures'], ops: ['append', 'setWordStatus', 'editWord', 'upsertWordState', 'setConfig'] },
   setup: { append: [], ops: ['setConfig'] },
   restore: { append: [], ops: [] },
+  seed: { append: ['words'], ops: ['append'] },
 };
 
 const WORD_TRANSITIONS: Record<WordStatus, WordStatus[]> = {
@@ -48,15 +50,22 @@ const WORD_TRANSITIONS: Record<WordStatus, WordStatus[]> = {
   suspended: ['active'],
   rejected: ['pending'],
 };
-const EVENT_TYPES = ['open', 'close', 'review', 'capture', 'approve', 'reject', 'edit', 'image_ok'];
-const CONFIG_KEYS = ['new_per_day', 'backlog_pause', 'checkpoint_every', 'inbox_max_per_run'];
+const EVENT_TYPES = ['open', 'close', 'seen', 'review', 'capture', 'approve', 'reject', 'edit', 'suspend', 'image_ok'];
+const CONFIG_KEYS = ['new_per_day', 'backlog_pause', 'retention', 'inbox_max_per_run'];
+/** Target retention for the memory model: a decimal between 0.70 and 0.97 (D41). */
+const RETENTION = /^0\.(7\d{0,2}|8\d{0,2}|9[0-7]?)$/;
+const DECIMAL = /^\d{1,6}(\.\d{1,6})?$/;
 const PROMPT_KINDS = ['cloze', 'listen', 'choice'];
 const ISO = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z$/;
 const UINT = /^\d{1,6}$/;
 
 export class WriteRejected extends Error {
-  constructor(public index: number, public reason: string) {
+  index: number;
+  reason: string;
+  constructor(index: number, reason: string) {
     super(`op ${index} rejected: ${reason}`);
+    this.index = index;
+    this.reason = reason;
   }
 }
 
@@ -173,6 +182,8 @@ export function applyOps(core: Core, ops: readonly Op[], ctx: { actor: Actor; ts
           if (!/^[0-5]$/.test(row.stage!)) throw new Error('bad_stage');
           if (!UINT.test(row.lapses!) || !UINT.test(row.streak!)) throw new Error('bad_counter');
           for (const c of ['due_at', 'last_seen']) if (row[c] && !ISO.test(row[c]!)) throw new Error(`bad_time:${c}`);
+          for (const c of ['stability', 'difficulty']) if (row[c] && !DECIMAL.test(row[c]!)) throw new Error(`bad_number:${c}`);
+          if (row.reps && !UINT.test(row.reps)) throw new Error('bad_counter');
           const existing = next.word_state.find((r) => r.word_id === row.word_id);
           if (existing) {
             if (sameRow(existing, row)) { noops++; return; }
@@ -188,7 +199,7 @@ export function applyOps(core: Core, ops: readonly Op[], ctx: { actor: Actor; ts
         }
         case 'setConfig': {
           if (!CONFIG_KEYS.includes(op.key)) throw new Error('config_key_not_allowed');
-          if (!UINT.test(op.value) || Number(op.value) > 1000) throw new Error('bad_config_value');
+          if (op.key === 'retention' ? !RETENTION.test(op.value) : !UINT.test(op.value) || Number(op.value) > 1000) throw new Error('bad_config_value');
           const existing = next.config.find((r) => r.key === op.key);
           if (existing) {
             existing.value = op.value;
@@ -223,14 +234,22 @@ function validateAppend(tab: AppendTab, row: Row, core: Core, actor: Actor) {
     case 'words': {
       if (!(POS as readonly string[]).includes(row.pos!)) throw new Error('bad_enum:pos');
       if (!(TIERS as readonly string[]).includes(row.tier!)) throw new Error('bad_enum:tier');
-      if (!(DOMAINS as readonly string[]).includes(row.domain!)) throw new Error('bad_enum:domain');
+      // Thin seed records may leave the situation open; everything an agent proposes names one.
+      if (!(DOMAINS as readonly string[]).includes(row.domain!) && !(actor === 'seed' && row.domain === '')) throw new Error('bad_enum:domain');
       if (row.status !== 'pending' && row.status !== 'active') throw new Error('new_word_status');
+      const problems = recordProblems(row);
+      if (problems.length) throw new Error(`record:${problems[0]}`);
       if (row.dedupe_key !== dedupeKey(row.de!, row.pos!)) throw new Error('dedupe_key_mismatch');
       if (core.words.some((w) => w.dedupe_key === row.dedupe_key)) throw new Error('dedupe_conflict');
       if (actor === 'importer') {
         if (!['claude', 'chatgpt', 'manual', 'capture'].includes(row.source!)) throw new Error('source_not_allowed');
         if (row.status === 'active' && row.source !== 'capture') throw new Error('ai_word_must_be_pending');
         if (row.start_stage !== '0') throw new Error('start_stage_not_allowed');
+      }
+      if (actor === 'seed') {
+        if (row.source !== 'seed') throw new Error('source_not_allowed');
+        if (row.status !== 'active') throw new Error('seed_word_must_be_active');
+        if (!/^[0-2]$/.test(row.start_stage!)) throw new Error('bad_start_stage');
       }
       break;
     }

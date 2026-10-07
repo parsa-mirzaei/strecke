@@ -11,8 +11,9 @@
  * replaying a batch, moving rows, or editing the status column changes nothing in Core.
  */
 import {
-  AGENT_COLUMNS, CORE_TABS, INBOX_COLUMNS, LIMITS, type Core, type Row,
+  CORE_TABS, INBOX_HEADERS, LIMITS, agentColumns, type Core, type InboxVersion, type Row,
 } from './schema.ts';
+import { recordColumns } from './record.ts';
 import { canonical, sha256 } from './sha256.ts';
 import { clean, contentProblems, dedupeKey, fold } from './text.ts';
 import { mintId, type RandomBytes } from './ids.ts';
@@ -46,8 +47,25 @@ function asciiJson(v: unknown): string {
   return JSON.stringify(v).replace(/[\u007f-\uffff]/g, (c) => '\\u' + c.charCodeAt(0).toString(16).padStart(4, '0'));
 }
 
-export function fingerprint(row: Row): string {
-  return sha256(canonical(AGENT_COLUMNS.map((c) => row[c] ?? '')));
+/**
+ * Content fingerprint of a row's agent columns. v1 keeps its original formula, so rows already in
+ * `inbox_log` stay recognised; v2 is prefixed with its version so the two can never collide.
+ */
+export function fingerprint(row: Row, version: InboxVersion = 2): string {
+  const values = agentColumns(version).map((c) => row[c] ?? '');
+  return sha256(canonical(version === 1 ? values : ['v2', ...values]));
+}
+
+/** Which Inbox contract a header row speaks, or why it is refused. */
+export function headerVersion(headerCells: readonly unknown[]): InboxVersion | 'header_mismatch' | 'header_extra_columns' {
+  const header = headerCells.map((h) => String(h ?? '').trim());
+  for (const v of [2, 1] as const) {
+    const cols = INBOX_HEADERS[v];
+    if (header.length >= cols.length && cols.every((c, i) => header[i] === c)) {
+      return header.slice(cols.length).some((h) => h !== '') ? 'header_extra_columns' : v;
+    }
+  }
+  return 'header_mismatch';
 }
 
 function captureMatches(captureText: string, de: string): boolean {
@@ -70,9 +88,10 @@ export function importInbox(input: {
 
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?Z$/.test(now)) return fail('bad_timestamp');
   // Fail closed on a tampered header: column positions would no longer mean what we think.
-  const header = (inbox[0] ?? []).map((h) => String(h ?? '').trim());
-  if (header.length < INBOX_COLUMNS.length || INBOX_COLUMNS.some((c, i) => header[i] !== c)) return fail('header_mismatch');
-  if (header.slice(INBOX_COLUMNS.length).some((h) => h !== '')) return fail('header_extra_columns');
+  const version = headerVersion(inbox[0] ?? []);
+  if (typeof version === 'string') return fail(version);
+  const width = INBOX_HEADERS[version].length;
+  const agentCols = agentColumns(version);
 
   const seen = new Map(core.inbox_log.map((r) => [r.fingerprint!, r]));
   const takenIds = new Set([...core.words.map((w) => w.word_id!), ...core.prompts.map((p) => p.prompt_id!)]);
@@ -93,11 +112,11 @@ export function importInbox(input: {
 
   for (let i = 1; i < last; i++) {
     const cells = inbox[i] ?? [];
-    const row = toInboxRow(cells);
-    const extra = cells.slice(INBOX_COLUMNS.length).filter((c) => String(c ?? '') !== '').length;
-    if (AGENT_COLUMNS.every((c) => (row[c] ?? '').trim() === '') && !extra) { summary.empty!++; continue; }
+    const row = toInboxRow(cells, version);
+    const extra = cells.slice(width).filter((c) => String(c ?? '') !== '').length;
+    if (agentCols.every((c) => (row[c] ?? '').trim() === '') && !extra) { summary.empty!++; continue; }
 
-    const fp = fingerprint(row);
+    const fp = fingerprint(row, version);
     const prior = seen.get(fp);
     if (prior) {
       summary.already_seen!++;
@@ -111,7 +130,7 @@ export function importInbox(input: {
     }
     evaluated++;
 
-    const reasons = validateInboxRow(row, extra);
+    const reasons = validateInboxRow(row, extra, version);
     const runId = row.run_id ?? '';
     const runCount = (runCounts.get(runId) ?? 0) + 1;
     runCounts.set(runId, runCount);
@@ -144,6 +163,9 @@ export function importInbox(input: {
         domain: row.domain!, family: clean(row.family ?? ''), start_stage: '0', image_url: '', image_ok: '',
         source: isCapture ? 'capture' : row.source!, status: isCapture ? 'active' : 'pending',
         dedupe_key: key, created_at: now, updated_at: now,
+        // v2 carries the record columns; exercises are generated from them (D39). v1 keeps its clozes,
+        // listen sentence and distractors as prompts below, which the compat layer reads.
+        ...(version === 2 ? recordColumns(row) : {}),
       } });
       const distractors = JSON.stringify([row.wrong_1, row.wrong_2].filter(Boolean).map((s) => clean(s!)));
       const prompt = (kind: string, de_text: string, answer: string, hint_en: string, en_text: string, d = '[]') => {
@@ -153,9 +175,11 @@ export function importInbox(input: {
           hint_en: clean(hint_en), en_text: clean(en_text), distractors: d, status: 'active',
         } });
       };
-      prompt('cloze', row.cloze_1!, row.answer_1!, row.hint_1 ?? '', '', distractors);
-      if (row.cloze_2) prompt('cloze', row.cloze_2, row.answer_2!, '', '');
-      if (row.listen_de) prompt('listen', row.listen_de, '', '', row.listen_en ?? '');
+      if (version === 1) {
+        prompt('cloze', row.cloze_1!, row.answer_1!, row.hint_1 ?? '', '', distractors);
+        if (row.cloze_2) prompt('cloze', row.cloze_2, row.answer_2!, '', '');
+        if (row.listen_de) prompt('listen', row.listen_de, '', '', row.listen_en ?? '');
+      }
       if (capture) { usedCaptures.add(capture.capture_id!); rowOps.push({ op: 'setCaptureStatus', capture_id: capture.capture_id!, to: 'processed' }); }
     } else if (capture && outcome === 'duplicate') {
       usedCaptures.add(capture.capture_id!);
@@ -165,7 +189,7 @@ export function importInbox(input: {
     let reason = reasons.join(';').slice(0, 500);
     // Raw row kept for audit and recovery as ASCII-only JSON: it cannot act as a formula and cannot
     // smuggle invisible characters into Core (which would make the writer refuse the whole batch).
-    const raw = asciiJson(AGENT_COLUMNS.map((c) => row[c] ?? '')).slice(0, 1900);
+    const raw = asciiJson(agentCols.map((c) => row[c] ?? '')).slice(0, 1900);
     rowOps.push({ op: 'append', tab: 'inbox_log', row: {
       // Only well-formed labels reach Core: anything else (e.g. "-1", "=A1") would be refused by the
       // writer as a formula and, batches being all-or-nothing, block the whole import.

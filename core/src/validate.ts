@@ -3,9 +3,10 @@
  * The validator never repairs a row: an AI proposes, this code accepts or rejects, nothing in between.
  */
 import {
-  AGENT_COLUMNS, ARTICLES, DOMAINS, FIELD_MAX, ID_PATTERN, INBOX_COLUMNS, INBOX_SOURCES, LIMITS, POS,
-  RESERVED_COLUMNS, TIERS, type Row,
+  AGENT_V1_COLUMNS, ARTICLES, DOMAINS, FIELD_MAX, ID_PATTERN, INBOX_HEADERS, INBOX_SOURCES, LIMITS, POS,
+  RESERVED_COLUMNS, TIERS, agentColumns, type InboxVersion, type Row,
 } from './schema.ts';
+import { recordProblems } from './record.ts';
 import { clean, contentProblems, countGaps, wordCount } from './text.ts';
 
 const REQUIRED = ['de', 'en', 'pos', 'domain', 'cloze_1', 'answer_1', 'source', 'run_id'] as const;
@@ -18,22 +19,52 @@ const RUN_ID = /^(claude|chatgpt|manual)-[a-z0-9-]{1,40}$/;
 const isOneOf = <T extends readonly string[]>(list: T, v: string): v is T[number] => list.includes(v);
 
 /** Map a raw sheet row (array of cells) onto Inbox column names. Missing cells become ''. */
-export function toInboxRow(cells: readonly unknown[]): Row {
+export function toInboxRow(cells: readonly unknown[], version: InboxVersion = 2): Row {
   const row: Row = {};
-  INBOX_COLUMNS.forEach((c, i) => {
+  INBOX_HEADERS[version].forEach((c, i) => {
     const v = cells[i];
     row[c] = v === undefined || v === null ? '' : String(v);
   });
   return row;
 }
 
-export function validateInboxRow(row: Row, extraCells = 0): string[] {
+/** Checks every Inbox version shares: reserved columns, provenance (source, run_id), capture_id format. */
+function inboxProblems(row: Row, extraCells: number, version: InboxVersion): string[] {
+  const reasons: string[] = [];
+  if (extraCells > 0) reasons.push('cells_beyond_schema');
+  for (const c of RESERVED_COLUMNS) if ((row[c] ?? '') !== '') reasons.push(`reserved_column_filled:${c}`);
+  for (const c of ['source', 'run_id'] as const) if (clean(row[c] ?? '') === '') reasons.push(`missing:${c}`);
+  for (const c of agentColumns(version)) {
+    if ((row[c] ?? '').length > (FIELD_MAX[c] ?? 0) && !RESERVED_COLUMNS.includes(c as never)) reasons.push(`too_long:${c}`);
+  }
+  if (row.source && !isOneOf(INBOX_SOURCES, row.source)) reasons.push('source_not_allowed');
+  if (row.run_id && !RUN_ID.test(row.run_id)) reasons.push('bad_format:run_id');
+  if (row.run_id && row.source && isOneOf(INBOX_SOURCES, row.source) && !row.run_id.startsWith(row.source + '-'))
+    reasons.push('run_id_source_mismatch');
+  if (row.capture_id && !ID_PATTERN.capture_id.test(row.capture_id)) reasons.push('bad_format:capture_id');
+  return reasons;
+}
+
+/**
+ * One Inbox row → reasons. v2 rows use the shared record rules (record.ts) and must carry a first
+ * example with translation and a domain; v1 rows keep the Phase 0 cloze rules.
+ */
+export function validateInboxRow(row: Row, extraCells = 0, version: InboxVersion = 2): string[] {
+  if (version === 1) return validateV1Row(row, extraCells);
+  const reasons = inboxProblems(row, extraCells, 2);
+  // Agents must state pos; the "article implies noun" shortcut is for the learner's thin rows only.
+  if (!clean(row.pos ?? '')) reasons.push('missing:pos');
+  reasons.push(...recordProblems(row, { requireExample: true, requireDomain: true }).filter((r) => !r.startsWith('too_long:')));
+  return [...new Set(reasons)];
+}
+
+function validateV1Row(row: Row, extraCells = 0): string[] {
   const reasons: string[] = [];
   if (extraCells > 0) reasons.push('cells_beyond_schema');
 
   for (const c of RESERVED_COLUMNS) if (row[c] !== '') reasons.push(`reserved_column_filled:${c}`);
   for (const c of REQUIRED) if (clean(row[c] ?? '') === '') reasons.push(`missing:${c}`);
-  for (const c of AGENT_COLUMNS) {
+  for (const c of AGENT_V1_COLUMNS) {
     const max = FIELD_MAX[c] ?? 0;
     if ((row[c] ?? '').length > max && !RESERVED_COLUMNS.includes(c as never)) reasons.push(`too_long:${c}`);
   }

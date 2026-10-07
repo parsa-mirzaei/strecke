@@ -8,7 +8,8 @@ import { canonical, sha256 } from './sha256.ts';
 
 export const GENESIS = '0'.repeat(64);
 
-export type Actor = 'importer' | 'app' | 'setup' | 'restore';
+/** `seed` is the learner's one-time local seed import (D16, D47); never reachable from the Inbox. */
+export type Actor = 'importer' | 'app' | 'setup' | 'restore' | 'seed';
 
 export interface AuditInput {
   ts: string;

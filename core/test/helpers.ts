@@ -1,14 +1,14 @@
 import { applyOps, type Op } from '../src/writer.ts';
 import { importInbox } from '../src/importer.ts';
 import { seededBytes } from '../src/ids.ts';
-import { INBOX_COLUMNS, emptyCore, type Core, type Row } from '../src/schema.ts';
+import { INBOX_COLUMNS, INBOX_V1_COLUMNS, emptyCore, type Core, type Row } from '../src/schema.ts';
 
 export const NOW = '2026-10-05T10:00:00Z';
 export const LATER = '2026-10-05T11:00:00Z';
 
-/** A valid expansion-stream Inbox row (synthetic, generic A2 content). */
-export function goodRow(over: Partial<Record<(typeof INBOX_COLUMNS)[number], string>> = {}): Row {
-  const base: Row = Object.fromEntries(INBOX_COLUMNS.map((c) => [c, '']));
+/** A valid expansion-stream Inbox **v1** row (synthetic, generic A2 content). */
+export function goodRow(over: Partial<Record<(typeof INBOX_V1_COLUMNS)[number], string>> = {}): Row {
+  const base: Row = Object.fromEntries(INBOX_V1_COLUMNS.map((c) => [c, '']));
   return {
     ...base,
     de: 'Fahrkarte', article: 'die', en: 'ticket', pos: 'noun', tier: 'core', domain: 'alltag',
@@ -20,8 +20,24 @@ export function goodRow(over: Partial<Record<(typeof INBOX_COLUMNS)[number], str
   };
 }
 
-export const cells = (r: Row) => INBOX_COLUMNS.map((c) => r[c] ?? '');
-export const sheet = (...rows: Row[]) => [[...INBOX_COLUMNS], ...rows.map(cells)];
+export const cells = (r: Row) => INBOX_V1_COLUMNS.map((c) => r[c] ?? '');
+export const sheet = (...rows: Row[]) => [[...INBOX_V1_COLUMNS], ...rows.map(cells)];
+
+/** A valid expansion-stream Inbox **v2** row: a full record (synthetic, generic A2 content). */
+export function goodRowV2(over: Partial<Record<(typeof INBOX_COLUMNS)[number], string>> = {}): Row {
+  const base: Row = Object.fromEntries(INBOX_COLUMNS.map((c) => [c, '']));
+  return {
+    ...base,
+    de: 'Haltestelle', article: 'die', plural: 'Haltestellen', en: 'stop (bus, tram)', pos: 'noun', tier: 'core', domain: 'alltag',
+    example_de: 'Wir steigen an der nächsten Haltestelle aus.', example_en: 'We get off at the next stop.', example_form: '',
+    example_2_de: 'Die Haltestelle ist direkt vor dem Büro.', example_2_en: 'The stop is right in front of the office.',
+    example_2_form: '', collocation: 'an der Haltestelle warten', prep: 'an', note: '', wrong_1: 'station hall',
+    wrong_2: 'crossing', image_key: 'bus', source: 'claude', run_id: 'claude-batch-20261007-1000',
+    ...over,
+  };
+}
+export const cellsV2 = (r: Row) => INBOX_COLUMNS.map((c) => r[c] ?? '');
+export const sheetV2 = (...rows: Row[]) => [[...INBOX_COLUMNS], ...rows.map(cellsV2)];
 
 /** Core with a few existing words and one open capture, built through the writer so the audit is real. */
 export function seededCore(): Core {

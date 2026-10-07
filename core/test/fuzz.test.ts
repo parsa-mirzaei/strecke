@@ -3,7 +3,7 @@ import { importInbox } from '../src/importer.ts';
 import { applyOps } from '../src/writer.ts';
 import { seededBytes } from '../src/ids.ts';
 import { verifyAudit } from '../src/audit.ts';
-import { INBOX_COLUMNS } from '../src/schema.ts';
+import { INBOX_V1_COLUMNS as INBOX_COLUMNS } from '../src/schema.ts';
 import { dedupeKey } from '../src/text.ts';
 import { cells, goodRow, seededCore } from './helpers.ts';
 
