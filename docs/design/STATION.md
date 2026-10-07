@@ -24,6 +24,7 @@ Station signs are clear, public and adult. Sentences sit on **boards** (dark pan
 
 > **Amber means "what you have to retrieve."** In every exercise the missing answer is an amber shape: a blank in a sentence, a cover over a meaning, the gap before a noun. Answering fills it; tapping lifts it.
 
+- One amber thing at a time (D49): what you retrieve, or once it is retrieved, the next thing for your hand (*Weiter*). What is shown but not asked (an article in the Karte, a pictogram) stays ink.
 - A first-time user understands each exercise from its layout alone. No "tap to reveal", no tutorial copy. If a layout needs a caption, the layout is wrong.
 - A lone word on an empty page is wrong. Show context (the example sentence) and the shape of the missing answer. The only exception is a *thin* record with no example (see SPEC): its Karte shows the word, article and plural, plus the collocation if there is one.
 
@@ -74,8 +75,9 @@ Amber shapes on light paper therefore always carry a `--signal-edge` outline or 
 | Component | Shape |
 | --- | --- |
 | Label strip | Mono label, top left: the domain (`ALLTAG`), plus `DEMO` or `VORSCHLAG` when relevant |
-| Article chip | Small `--signal` rectangle with the article in ink; an empty chip with a `--signal-edge` outline when the article is what you retrieve |
-| Headword | 800 weight, left-aligned on the text edge |
+| Article plate | Small plate with a 2 px ink outline when the article is shown; the same plate as an amber gap when the article is what you retrieve (D49: one amber thing at a time) |
+| Headword | 800 weight, left-aligned on the text edge; never breaks inside a word, the size shrinks to fit the longest word (floor 28 px) |
+| Pictogram | Optional, Lucide line icon in `--ink-2` beside the headword; never amber |
 | Board | `--board` panel, radius 6, full-bleed minus the gutter; the target word marked with a signal underline or fill |
 | Amber blank `.gap` | Word-width space with a 4 px `--signal` underline and a `--signal-edge` 1 px base line; filled state: signal background, ink text |
 | Amber cover | A `--signal` panel with a `--signal-edge` outline, laid over the meaning; it slides aside when lifted |
@@ -91,7 +93,7 @@ What the learner sees. Which exercise appears when is set by the SPEC ladder.
 
 | Exercise | Layout | Resolves by |
 | --- | --- | --- |
-| **Karte** | Article chip, headword, plural in ink-2; board with the example, the word highlighted; amber cover over the meaning | Tap the cover: it slides aside, the meaning shows, then the example translation, collocation and note fade in. *Weiter* |
+| **Karte** | Article plate, headword, plural in ink-2; board with the example, the word underlined in amber; amber cover over the meaning. Only *Fertig* below | Tap the cover: it slides aside, the meaning shows, then the example translation, collocation and note fade in, and *Weiter* appears. Swipe up or *Weiter* |
 | **Artikel** | Empty amber chip before the headword; example board below; chips *der die das* (always in this order) | Tap a chip |
 | **Bedeutung** | Article chip, headword, example board; an amber blank where the meaning goes; three meaning rows | Tap a row |
 | **Lücke** | Board with the sentence and one amber blank; at stages 1–2 the example translation in ink-2 underneath; three option rows | Tap a row |

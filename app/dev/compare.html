@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Station: asset and motion comparison</title>
+    <!--
+      Development page (DECISIONS D49). Served only by the Vite dev server at /dev/compare.html; not part of
+      the production build. Tabler (MIT, Paweł Kuna) and Phosphor (MIT, Phosphor Icons) pictograms appear here
+      for comparison only and do not ship in the app; see NOTICE.md.
+    -->
+    <link rel="stylesheet" href="/src/styles/fonts.css" />
+    <link rel="stylesheet" href="/src/styles/station.css" />
+    <style>
+      body { overflow-y: auto; }
+      .page { max-width: 760px; margin: 0 auto; padding: calc(24px + env(safe-area-inset-top, 0px)) var(--gutter) 64px; }
+      h1 { font-weight: 800; font-size: clamp(30px, 7vw, 40px); letter-spacing: -0.02em; line-height: 1.05; margin: 0 0 12px; }
+      h2 { font-weight: 800; font-size: 24px; letter-spacing: -0.01em; margin: 48px 0 6px; }
+      p { max-width: 62ch; }
+      .muted { color: var(--ink-2); }
+      .set { border-top: 2px solid var(--line); padding: 16px 0; display: grid; gap: 12px; }
+      .set.pick { border-top-color: var(--signal-edge); }
+      .set-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+      .set-head strong { font-size: 19px; }
+      .row { display: flex; flex-wrap: wrap; gap: 14px 18px; color: var(--ink); }
+      .row svg { width: 32px; height: 32px; }
+      .board-row { background: var(--board); color: var(--board-ink); border-radius: var(--radius); padding: 14px 16px; }
+      .verdict { font-weight: 600; }
+      table { border-collapse: collapse; width: 100%; font-size: 15px; }
+      th, td { text-align: left; vertical-align: top; padding: 10px 8px 10px 0; border-top: 1px solid var(--line); }
+      .demo { position: relative; height: 230px; overflow: hidden; border: 2px solid var(--line); border-radius: var(--radius); margin: 12px 0; }
+      .demo-card { position: absolute; inset: 14px; display: grid; gap: 12px; align-content: start; }
+      .demo-card .headword { font-size: 40px; }
+      .demo-card .meaning { min-height: 52px; }
+      .buttons { display: flex; flex-wrap: wrap; gap: 10px; }
+      .buttons .btn { height: 48px; padding: 0 16px; font-size: 16px; }
+      .chosen { box-shadow: inset 0 0 0 2px var(--ink), 0 0 0 3px var(--signal); }
+      .haptics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+      .haptics > div { display: grid; gap: 8px; }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <p class="label">Phase C · design comparison</p>
+      <h1>Pictograms, images, motion, haptics</h1>
+      <p class="muted">Three candidates per question, judged against the seven principles in STATION.md. The finalist is marked; the reasoning is in DECISIONS D49. Motion and haptics only mean something on the phone.</p>
+
+      <h2>1. Pictograms</h2>
+      <p class="muted">Line, single colour, for concrete nouns only. Same nine words in each set.</p>
+      <div id="sets"></div>
+
+      <h2>2. Illustrations</h2>
+      <table>
+        <thead><tr><th>Candidate</th><th>Licence (read at source)</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr><td>Fluent Emoji (Microsoft)</td><td>MIT</td><td>Rejected: emoji art with faces and gloss; reads as decoration, breaks "alive but quiet".</td></tr>
+          <tr><td>OpenMoji</td><td>CC BY-SA 4.0</td><td>Rejected: share-alike is not permissive enough for later commercial use.</td></tr>
+          <tr><td>Noto Emoji (Google)</td><td>SIL OFL 1.1 (font)</td><td>Rejected: emoji style again; a second visual language next to the pictograms.</td></tr>
+        </tbody>
+      </table>
+      <p class="verdict">Finalist: no illustrations. A pictogram where it clearly helps a concrete noun, otherwise nothing.</p>
+
+      <h2>3. Motion</h2>
+      <p class="muted">Card arrival and cover lift. A is the brief's timing (calm, a little weight); B is the generic fast UI timing; C is what reduced motion gets.</p>
+      <div class="demo" aria-hidden="true">
+        <div class="demo-card" id="demo-card">
+          <div><span class="chip">die</span><div class="headword">Haltestelle</div></div>
+          <div class="meaning"><p class="meaning-text">stop (bus, tram)</p><span class="cover" id="demo-cover"></span></div>
+        </div>
+      </div>
+      <div class="buttons" id="motion-buttons"></div>
+      <p class="verdict">Finalist: A, with a spring (no bounce, or a little after a flick) for swipe releases. B is fine, but it reads as any app; A gives the card a moment of arrival without making anyone wait, since everything stays interruptible.</p>
+
+      <h2>4. Haptics</h2>
+      <p class="muted">Android Chrome only (iPhone has no Vibration API). Tap on the phone and compare.</p>
+      <div class="haptics" id="haptics"></div>
+      <p class="verdict">Finalist: A (the brief's values). B if A feels too present on your phone; C is too loud for a quiet app.</p>
+    </main>
+
+    <script type="module">
+      import { ICONS } from '/src/ui/icons.ts';
+      // Generated locally by tools/app/compare_icons.py and gitignored; without it only Lucide is shown.
+      const others = await fetch('./compare-icons.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+      const NS = 'http://www.w3.org/2000/svg';
+      const NAMES = ['bus', 'id-card', 'file-text', 'receipt', 'pill', 'calendar', 'house', 'graduation-cap', 'banknote'];
+      function svg(nodes, kind) {
+        const s = document.createElementNS(NS, 'svg');
+        const fill = kind === 'phosphor';
+        s.setAttribute('viewBox', fill ? '0 0 256 256' : '0 0 24 24');
+        s.setAttribute('fill', fill ? 'currentColor' : 'none');
+        if (!fill) {
+          s.setAttribute('stroke', 'currentColor');
+          s.setAttribute('stroke-width', '2');
+          s.setAttribute('stroke-linecap', 'round');
+          s.setAttribute('stroke-linejoin', 'round');
+        }
+        for (const [tag, attrs] of nodes) {
+          const el = document.createElementNS(NS, tag);
+          for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+          s.append(el);
+        }
+        return s;
+      }
+      const SETS = [
+        { kind: 'lucide', name: 'Lucide 1.52.0', lic: 'ISC (+ MIT for Feather-derived icons)', pick: true,
+          note: '2 px round stroke on a 24 grid, same weight as the type. 1,800+ icons, so UI icons and pictograms come from one family.',
+          get: (n) => ICONS[n] },
+        { kind: 'tabler', name: 'Tabler 3.49.0', lic: 'MIT', note: 'Also 2 px round stroke; a little busier in detail (more inner lines).', get: (n) => others.tabler[n] },
+        { kind: 'phosphor', name: 'Phosphor 2.1.1 (regular)', lic: 'MIT', note: 'Drawn as filled outlines on a 256 grid; softer and rounder, closer to a consumer app than to signage.', get: (n) => others.phosphor[n] },
+      ];
+      const host = document.getElementById('sets');
+      for (const set of SETS) {
+        if (set.kind !== 'lucide' && !others) continue;
+        const box = document.createElement('section');
+        box.className = 'set' + (set.pick ? ' pick' : '');
+        const head = document.createElement('div');
+        head.className = 'set-head';
+        const t = document.createElement('strong'); t.textContent = set.name + (set.pick ? '  ·  finalist' : '');
+        const l = document.createElement('span'); l.className = 'muted'; l.textContent = set.lic;
+        head.append(t, l);
+        const row = document.createElement('div'); row.className = 'row';
+        const row2 = document.createElement('div'); row2.className = 'row board-row';
+        for (const n of NAMES) { row.append(svg(set.get(n), set.kind)); row2.append(svg(set.get(n), set.kind)); }
+        const note = document.createElement('p'); note.className = 'muted'; note.style.margin = '0'; note.textContent = set.note;
+        box.append(head, row, row2, note);
+        host.append(box);
+      }
+
+      // Motion variants
+      const card = document.getElementById('demo-card');
+      const cover = document.getElementById('demo-cover');
+      const V = {
+        A: { label: 'A · brief', enter: [[{ transform: 'translateY(48px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 680, easing: 'cubic-bezier(0.22,0.9,0.28,1.02)' }],
+             lift: [[{ transform: 'translateX(0)' }, { transform: 'translateX(calc(100% + 24px))' }], { duration: 700, easing: 'cubic-bezier(0.32,0.72,0,1)', fill: 'forwards' }] },
+        B: { label: 'B · fast UI', enter: [[{ transform: 'translateY(24px)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 300, easing: 'cubic-bezier(0.23,1,0.32,1)' }],
+             lift: [[{ transform: 'translateX(0)' }, { transform: 'translateX(calc(100% + 24px))' }], { duration: 380, easing: 'cubic-bezier(0.23,1,0.32,1)', fill: 'forwards' }] },
+        C: { label: 'C · reduced', enter: [[{ opacity: 0 }, { opacity: 1 }], { duration: 200, easing: 'ease' }],
+             lift: [[{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: 'ease', fill: 'forwards' }] },
+      };
+      const mb = document.getElementById('motion-buttons');
+      for (const [k, v] of Object.entries(V)) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-outline' + (k === 'A' ? ' chosen' : '');
+        b.textContent = v.label;
+        b.addEventListener('click', () => {
+          cover.getAnimations().forEach((a) => a.cancel());
+          card.animate(...v.enter);
+          setTimeout(() => cover.animate(...v.lift), v.enter[1].duration + 350);
+        });
+        mb.append(b);
+      }
+
+      // Haptic sets
+      const H = {
+        A: { label: 'A · brief', reveal: 8, right: 12, wrong: [8, 60, 8] },
+        B: { label: 'B · softer', reveal: 5, right: 8, wrong: [6, 50, 6] },
+        C: { label: 'C · firmer', reveal: 14, right: 20, wrong: [14, 70, 14] },
+      };
+      const hb = document.getElementById('haptics');
+      for (const [k, h] of Object.entries(H)) {
+        const col = document.createElement('div');
+        const t = document.createElement('strong'); t.textContent = h.label + (k === 'A' ? '  ·  finalist' : '');
+        col.append(t);
+        for (const what of ['reveal', 'right', 'wrong']) {
+          const b = document.createElement('button');
+          b.className = 'btn btn-outline';
+          b.textContent = { reveal: 'Cover lifted', right: 'Right answer', wrong: 'Wrong answer' }[what];
+          b.addEventListener('click', () => navigator.vibrate?.(h[what]));
+          col.append(b);
+        }
+        hb.append(col);
+      }
+    </script>
+  </body>
+</html>

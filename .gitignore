@@ -16,3 +16,6 @@ Thumbs.db
 
 # graphify knowledge graph (local tooling output)
 graphify-out/
+
+# Design comparison data, generated locally by tools/app/compare_icons.py (third-party icons; not shipped)
+app/dev/compare-icons.json

@@ -198,3 +198,60 @@ The product owner's brief of 2026-10-07 changes the interface, the exercise mode
 - **Known limits:**
   - In a very small deck, a part of speech with fewer than three words gets no Lücke or Bedeutung, so its words can stay at the stage before that gate until the deck grows.
   - One memory state per word (see D41).
+
+## 2026-10-07 · Phase C: design pass and first vertical slice
+
+**D49 Skills, assets, motion and the Karte slice.**
+
+*Skills* (every skill installed in this environment was listed; the UI-relevant ones were read in full):
+- `frontend-design`: **used.** Design plan and self-critique. Its list of generated-design tells includes warm cream paper and mono uppercase labels; both are pinned by the brief and kept. Everything the brief leaves free avoids the defaults: no card grid, no eyebrows, no decorative motion, no arrows on buttons.
+- `emil-design-eng`: **used.** Press feedback `scale(.97)`, strong ease-out curves, transform/opacity only, never `scale(0)`, exit faster than enter.
+- `apple-design`: **used.** 1:1 drag with no jump at the slop, velocity handoff into a spring, rubber-band edges, every animation interruptible, haptic on the same frame as the visual.
+- `animate` (with its RECIPES.md): **used.** Drag-to-dismiss recipe (flick velocity, pointer capture, one finger only, friction instead of walls) and reduced motion shipped with each animation.
+- `mobile-native`: **used.** `100dvh`, safe areas with `viewport-fit=cover`, `theme-color` per scheme, no tap highlight, `touch-action`, `user-select: none` on controls only, hover only under `(hover: hover)`, 16 px text, zoom never disabled.
+- `built-in-browser`: **used** only to run and measure the slice; not a design input.
+- `dataviz`: skipped (no charts in Station).
+- `brand-guidelines`: skipped (another company's brand).
+- `canvas-design`: skipped (static art).
+- `web-artifacts-builder` and `artifact-design`: skipped (claude.ai pages, not this PWA).
+- `clarify`, `graphify` and the document, office and research skills: skipped (not UI).
+
+*Design exploration (time-boxed; web reachable from this machine).* Licences were read from the files in each package (`npm pack`) or the official repository. Details and attributions: `NOTICE.md`. Comparison page: `app/dev/compare.html` (dev server only).
+- **Pictograms.** The candidates were Lucide 1.52.0 (ISC, plus MIT for Feather-derived icons), Tabler 3.49.0 (MIT) and Phosphor 2.1.1 (MIT).
+  - **Lucide is the finalist**, as planned in D44. Its 2 px round stroke matches the type weight, and UI icons and pictograms come from one family.
+  - Tabler is busier in detail. Phosphor is drawn as filled outlines and reads as a consumer app, not signage.
+- **Illustrations.** The candidates were Fluent Emoji (MIT), OpenMoji (CC BY-SA 4.0) and Noto Emoji (OFL). **All rejected**:
+  - Fluent Emoji and Noto Emoji: emoji style, with faces in the case of Fluent Emoji. That breaks "alive but quiet" and adds a second visual language.
+  - OpenMoji: share-alike, so not permissive enough for later commercial use.
+  - Finalist: no illustrations; a pictogram only where it helps a concrete noun.
+- **Motion.** A: the brief's timing (enter 680 ms, cover 700 ms). B: generic fast UI (300 ms). C: reduced (fades). **A is the finalist**, with a spring for swipe releases (no bounce, or 0.8 damping after a flick). The motion library `motion` (MIT) was considered and not used: a 40-line spring and the Web Animations API cover the need, with no runtime dependency.
+- **Haptics.** A: the brief's 8 ms reveal, 12 ms right, 8-60-8 wrong. B: softer. C: firmer. **A is the finalist**; B is the fallback if A feels too present on the phone.
+- The prototype reference `docs/design/reference/station-prototype.html` does not exist in the repo or on this machine. STATION.md, which carries the brief's motion values, served as the reference.
+
+*Slice decisions:*
+- **One amber thing at a time.** Amber marks what to retrieve or the next thing for the hand, and only one such shape is on screen at once.
+  - In the Karte, the article plate is ink, because it is shown, not asked. It becomes the amber gap only in the Artikel exercise, in the same place.
+  - The pictogram is ink-2, with no amber accent: the amber rule beats the brief's "one amber accent" for pictograms.
+  - *Weiter* (amber) appears only after the cover has gone.
+  - The word in the example keeps a thin amber underline as a pointer.
+- **Layout.**
+  - Top-anchored like a sign; the empty space falls to the thumb zone.
+  - The meaning, translation, collocation and note form one answer block.
+  - Headwords never break inside a word: the size shrinks to fit the longest word (floor 28 px).
+  - All 50 seed cards were checked to fit at 375 × 812 and 320 × 600.
+- **Swipe up.**
+  - Follows the finger 1:1 once the cover is lifted; before that it rubber-bands.
+  - Commits past 110 px, or on a flick faster than 0.45 px/ms.
+  - Exits at the swipe's speed (180–340 ms); a short drag springs home.
+  - A drag never also counts as a tap.
+- **Data.**
+  - The slice runs the real Phase B picker, restricted to Karte exercises until the other seven exist.
+  - Revealing logs a `seen` event through the adapter.
+  - In development the `local` adapter imports the gitignored seed from a dev-only route (`/__dev/seed.csv`). The dev server may read only `app/` and `core/src` (`server.fs.allow`), so `data/` never leaks to the LAN beyond that one file. Builds use the `demo` deck; a check confirmed the build contains no seed words and no dev route.
+- **Code and assets.**
+  - The Heft prototype code is removed (it stays in git history).
+  - IndexedDB uses a 40-line wrapper instead of `idb`.
+  - Fonts are Latin only (65 KB): German and English need nothing else.
+  - The build is about 24 KB JS + 2.3 KB CSS gzipped, plus the fonts.
+- **Lucide renames.** Lucide 1.x renamed `building-2` to `building` and `trash-2` to `trash`. The `image_key` allow-list now uses the canonical names; no data used the old ones.
+- **Not deployed.** GitHub Pages deploys on every push to `main`, so the slice is tested from the dev server (same Wi-Fi, or USB port forwarding) and is not pushed until the owner says so.
