@@ -7,11 +7,11 @@ A German practice app for A2–B1 learners. Open it and the first exercise is al
 ## How it works
 
 ```
-scheduled AI agent ──append──► Inbox sheet ──validator + importer──► Core sheet ◄──OAuth──► phone (PWA, IndexedDB)
-   (everyday Google account)   (untrusted)       (deterministic code)   (vault account, no AI access)
+scheduled AI agent ──append──► Inbox ──validator + importer──► Core sheet ◄──web app + token──► phone (PWA, IndexedDB)
+                               (untrusted)  (deterministic code)
 ```
 
-*AI proposes. Deterministic code validates. Core is authoritative.* (Proposed production design, see [architecture](docs/ARCHITECTURE.md).)
+*AI proposes. Deterministic code validates. Core is authoritative.* Two deployment modes share the same code: **simple** (everything in the learner's one Google account) and **hardened** (Core in a separate account that no AI tool is ever connected to). See [architecture](docs/ARCHITECTURE.md) and [security §8](docs/security/ARCHITECTURE.md#8-deployment-modes-d45).
 
 - **Offline-first PWA** (Vite, TypeScript, Preact) on GitHub Pages. Cards render from the device cache; the network runs only in the background.
 - **Bring your own Sheet.** Each learner owns one private Google Sheet and one Apps Script deployment. No server, no accounts, no paid APIs.

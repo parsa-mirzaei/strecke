@@ -1,6 +1,9 @@
 # Strecke security architecture
 
 **AI proposes. Deterministic code validates. Core is authoritative.**
+
+> **Update 2026-10-07 (DECISIONS D45):** the app path changed. The PWA reaches Core through an Apps Script web app with a per-copy token (D31), not through OAuth. The vault design below is now the optional **hardened mode**, which the owner uses for their own data. See [§8](#8-deployment-modes-d45). The agent-side identity boundary, validator, importer, writer, audit and backups are unchanged.
+
 This document fixes *who can touch what* before any real learner data exists. It answers the threats in [THREAT-MODEL.md](THREAT-MODEL.md); test evidence is in [GATE-REPORT.md](GATE-REPORT.md).
 
 ## 1. The design rule that follows from the tests
@@ -129,3 +132,29 @@ The deterministic core is implemented and tested now. The thin adapters that con
 | Hash-chained audit, missing-row detection | Phone event queue and sync |
 | Snapshot, verify, diff, restore, recover-with-merge | Routine on the connector account |
 | `agentView()` (minimal AI-readable data) | |
+
+## 8. Deployment modes (D45)
+
+The owner decided on 2026-10-07 that every copy uses one app API: the D31 Apps Script web app (`bootstrap`, `sync`) with a per-copy token. Where Core lives is a deployment choice.
+
+| | Simple mode (default) | Hardened mode (optional; the owner's own data) |
+| --- | --- | --- |
+| Google accounts | One: the learner's | Two: the everyday account (AI connectors) and a vault account (no AI, ever) |
+| Core | In the learner's account | In the vault, shared with nobody |
+| Inbox | A tab or spreadsheet in the same account | A separate spreadsheet owned by the vault, Editor for the everyday account, everything but the agent columns protected (§3) |
+| Web app | Deployed by the learner, executes as the learner | Deployed from the vault, executes as the vault |
+| AI connectors can reach Core | **Yes**, if connectors are signed into that account (gate L-3..L-6) | **No** (identity boundary; isolation tests I-1..I-6) |
+| Shared secret | Per-copy token | Per-copy token |
+| Setup | Short: one Sheet, one deployment, one token | Owner steps in [OWNER-STEPS.md](OWNER-STEPS.md), then the deployment |
+
+**What changes against §3–§6 for the app path:**
+- §6 rule 4 ("no web endpoint") and rule 6 (PWA OAuth) are replaced. The web app is the only endpoint.
+- Its rules:
+  - It accepts only `POST` with a JSON body.
+  - It checks the token in constant time before anything else.
+  - It returns `{ ok, error }`, without stack traces.
+  - It writes only through `applyOps(actor: app)` under the script lock.
+  - It never exposes the Inbox, the audit or `inbox_log`.
+- **Token rules:** at least 128 bits of randomness, generated per copy; stored only in Script Properties and on the device; never in URLs, the repo, logs or agent-readable data; rotatable by running one function in the script editor.
+- **Threats re-rated:** #6 (public endpoint abuse) and #7 (client-side secret) return as *accepted, mitigated*. Mitigations: an unguessable token, rotation, writer allow-list, append-only events, daily backups, and in hardened mode an endpoint that holds no AI identity. The PWA keeps the earlier rules: strict CSP and text-only rendering, so stealing the token by XSS stays hard.
+- **Gate:** the verdict stays FAIL for hardened mode until I-1..I-6 pass. Simple mode does not depend on the gate, because its trade-off is stated, not hidden. The owner's real data goes into a hardened Core only after the gate passes (SPEC Phase F).

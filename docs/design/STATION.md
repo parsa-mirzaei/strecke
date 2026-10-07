@@ -151,6 +151,8 @@ There are never counts, percentages, streaks, or sentences like "you can now…"
 
 German UI, short English hints for content. Fixed labels: *Weiter*, *Fertig*, *Bis gleich*, *Weiß ich nicht*, *Prüfen*, *Fast:*, *Das sehen wir bald wieder.*, *Gerade kein Ton? Text zeigen*, *Dein Weg*, *Wörter*, *Hinzufügen*, *Vorschläge*, *Einstellungen*, *Behalten*, *Nicht für mich*, *Speichern*, *Pausieren*, *Suchen*. Labels: `NEU`, `VORSCHLAG`, `DEMO`, `GEWÄHLT`.
 
+**The speaking invitation** (owner's choice, D42): sometimes, after a Karte's cover lifts, one small `--ink-2` line appears under the translation: *Wenn du magst: sag es einmal laut.* At most once per visit, never on the first card, never on a graded exercise, no button, no effect on the schedule. It invites; it never explains or requires anything.
+
 **Never in any string:** imperatives that explain an exercise, praise ("Super!"), loss language ("falsch", "verpasst"), numbers about progress, claims about real-world ability.
 
 ## Accessibility

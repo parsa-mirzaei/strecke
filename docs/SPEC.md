@@ -135,7 +135,7 @@ Legacy values win over generated ones for the same word: `prompts` rows and the 
 
 ## API contract (Apps Script web app, used by the PWA only)
 
-> **Under review (DECISIONS D45):** the 2026-10-07 brief asks for no shared secret, following the security architecture (D24: vault account, the app using the learner's own Google sign-in, no web endpoint). This section describes the D31 alternative. Phase E does not start until the owner decides; until then the app runs only on the `demo` and `local` adapters.
+> **Two deployment modes, one API (DECISIONS D45).** *Simple mode* (default): the learner's one Google account holds the Sheet and this web app. *Hardened mode* (optional, used for the owner's own data): Core and this web app live in a vault account no AI tool is connected to; agents reach only a separate Inbox spreadsheet ([security/ARCHITECTURE.md §8](security/ARCHITECTURE.md#8-deployment-modes-d45)). The app code is the same in both.
 
 The API exists for the phone alone; agents never call it. Two actions, one token. Every call is a `POST` with `Content-Type: text/plain` and a JSON body `{ "action": …, "token": …, … }`, which avoids the CORS preflight Apps Script cannot answer and keeps the token out of URLs (Apps Script cannot read request headers). Deployment: executed as the Sheet owner, access "Anyone", `APP_TOKEN` in Script Properties.
 
@@ -230,7 +230,7 @@ The app has no home screen: opening it shows the first exercise. Everything else
 
 | Screen | How you get there | What it does |
 | --- | --- | --- |
-| First run | Only once | Two choices: *Demo ausprobieren* (bundled deck, no setup) or *Eigenes Sheet verbinden* (method depends on D45). Then the first card |
+| First run | Only once | Two choices: *Demo ausprobieren* (bundled deck, no setup) or *Eigenes Sheet verbinden* (paste the web app URL + token, test the connection, download content). Then the first card |
 | Üben | Default on every open | One card at a time. The domain label sits top left, the speaker and menu top right; nothing else. Demo mode shows a quiet `DEMO` label |
 | Dein Weg | Between cards when there is something true to show; in the menu once a claim exists | Before/after pairs and a fully known sentence from the log. No scores, no counts |
 | Wörter | Menu | Browse and search all words; see a word's columns and generated exercises; edit; *Pausieren*. Rows new from the Sheet are labelled `NEU` until first seen |
@@ -305,8 +305,8 @@ These replace the MVP2 slices (D35). Phases 0–7 below are kept as the project'
 - **B. Data layer and generators.** Schema, validator, importer and compat updates for the new columns (with `sheet-readme.md` and `agents/contract.md`); `exercisesFor` and distractors; scheduler (event log, ladder, FSRS-5); `DataAdapter` with `demo` and `local`; `tools/seed-check.ts` and the gitignored `data/seed/seed-50.csv`. *Done when:* Vitest covers every exercise row (including missing columns), the distractor rules, every ladder transition and replay determinism; the seed passes `seed-check`; coverage in the stop report.
 - **C. Station UI, practice.** Tokens, components, all exercises, motion, swipe, haptics, reduced motion, self-hosted fonts, icons, `NOTICE.md`; runs on `local` (seed) and `demo`. *Done when:* each exercise is understandable from its layout alone (method stated); keyboard and screen-reader basics work; Lighthouse PWA/performance numbers reported; a real Android Chrome checklist handed to the owner (cold open < 2 s, swipe feel, haptics, TTS voice, safe areas, install).
 - **D. Dein Weg, Wörter, Hinzufügen, Vorschläge, Einstellungen.** *Done when:* Dein Weg shows only claims the log supports (fixture-log tests, including "nothing to show"); a row added to the local source produces its exercises without a code change.
-- **E. Sheet adapter and sync.** Only after D45 is decided and, for the D24 path, the security gate has passed; otherwise built against fakes and stopped at the gate. *Done when:* sync is idempotent, offline-safe and tested with fakes; nothing connects to a real Sheet without the owner's explicit go.
-- **F. Real data.** Seed imported through the importer into the real Core with the owner's go; verified on the phone.
+- **E. Sheet adapter and sync.** The `sheet` adapter on the D31 API, the Apps Script web app, and the setup guide for both modes (D45). Built and tested against fakes. *Done when:* sync is idempotent, offline-safe and tested with fakes; nothing connects to a real Sheet without the owner's explicit go.
+- **F. Real data.** The owner's hardened Core: owner steps, isolation tests I-1..I-6 pass, then the starter seed and the owner's Anki words go through the importer into Core with the owner's go; verified on the phone.
 
 ### History: phases 0–7 (original plan)
 
@@ -367,7 +367,7 @@ Build backend before UI, and prove the three risky parts on the test phone befor
 | Answer mode | Taps, and typing from stage 3 (Tippen); grades inferred from behaviour, no self-grading (D40, D42) | Objective signals are honest and free; typing proves recall at later stages |
 | Other SRS decks during the test | Paused for 4 weeks | Two review queues split the habit and spoil the test |
 | Images in v0.1 | Optional bundled pictogram via `image_key` (Lucide set), none required; `image_url` unused (D44) | Hosted images are fragile; a picture only where it clearly helps a concrete noun |
-| App access to Core | Open: D45 (no shared secret per the security docs vs D31 token web app) | Decides Phase E |
+| App access to Core | Decided (D45): D31 web app + per-copy token in both modes; hardened (vault) mode optional, used for the owner's data | A token on the phone is a shared secret; the vault keeps AI identities away from Core |
 | Domains | arbeit, uni, amt, alltag, smalltalk (everyday situations; decided) | Drives progress page and agent targeting |
 | Scheduler: ChatGPT, Claude, or both | Whichever passes the Phase 0 checklist; both if both pass | Decides the weekly task and whether any fallback is built |
 

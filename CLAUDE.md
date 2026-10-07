@@ -30,7 +30,7 @@ It checks generic patterns (emails, Google/Drive/Apps Script IDs and URLs, routi
 
 ## Hard constraints
 - No OpenAI/Anthropic API keys, no paid services, no per-token billing. Agents reach data only via the Google Sheet (`inbox`, or the fallback Phase 0 picks) using existing subscription connectors.
-- No server to operate: GitHub Pages (static) + the learner's Google Sheet(s) + Apps Script (web app or triggers only, per D45).
+- No server to operate: GitHub Pages (static) + the learner's Google Sheet (plus an Inbox spreadsheet in hardened mode) + one Apps Script web app with triggers.
 - Offline-first: render a card from IndexedDB in < 2 s on cold open; never block a card on the network. `bootstrap`/`sync` run in the background.
 - Small bundle: Vite + TypeScript + Preact + `idb`, plain CSS transitions and the Web Animations API. Fonts and icons self-hosted (no font or icon CDN at runtime). Any other runtime dependency needs a justification in `DECISIONS.md`; asset budget in D44.
 - Content is German with short English hints. UI labels in German as in STATION.md (*Weiter*, *Fertig*, *Bis gleich*, *Weiß ich nicht*, *Prüfen*, *Das sehen wir bald wieder.*, *Dein Weg*, *Wörter*, *Hinzufügen*, *Vorschläge*, *Einstellungen*, *Behalten*, *Nicht für mich*).
@@ -50,7 +50,9 @@ It checks generic patterns (emails, Google/Drive/Apps Script IDs and URLs, routi
 - Tabs: `README`, `inbox`, `words`, `prompts`, `events`, `word_state`, `captures`, `config`. Agents append only to `inbox`; the normalizer is the only automated writer of `words`/`prompts`.
 - `words` carries `tier` (core/chunk) and `start_stage` (0 except seed), plus optional record columns (`plural`, `example_de/en/form`, `example_2_de/en/form`, `collocation`, `prep`, `note`, `wrong_1/2`, `image_key`; D38). A missing column only means fewer exercises. `prompts` is an optional override layer. IDs minted by the writer: `w_`/`p_`/`e_`/`c_` + 8 chars. `dedupe_key` = `de` lower-cased, article stripped, whitespace collapsed, umlauts/ß kept; unique across all statuses.
 - Domains (five): `arbeit`, `uni`, `amt`, `alltag`, `smalltalk`. pos: `noun`, `verb`, `adj`, `phrase`.
-- Data access only through the `DataAdapter` interface (`demo`, `local`, `sheet`); UI and scheduler never know which. How the `sheet` adapter reaches Core is open (D45: no shared secret per the security docs vs the D31 token web app); never connect it to a real Core before that decision, a passed gate where required, and the owner's go. Whatever the transport: `sync` idempotent by `event_id`; events append-only; Core writes only through the core writer.
+- Data access only through the `DataAdapter` interface (`demo`, `local`, `sheet`); UI and scheduler never know which.
+- API (D31/D45): one Apps Script web app, actions `bootstrap` and `sync`, `POST` with `Content-Type: text/plain` and JSON body incl. a per-copy `token` (Script Properties + device only; never in URLs, repo or logs). Responses always `{ ok, error? }`. Writes under `LockService.getScriptLock()` and only through the core writer; batch `getValues`/`setValues`. `sync` idempotent by `event_id`; events append-only.
+- Two deployment modes, same code: **simple** (one Google account, default for every copy, keep setup easy) and **hardened** (Core + web app in a vault account no AI tool is connected to, agents only reach the Inbox; used for the owner's own data, needs gate tests I-1..I-6). Never connect to a real Sheet without the owner's explicit go.
 - The generic Sheet README text is `docs/sheet-readme.md`; `{{LEARNER_CONTEXT}}` is filled from `data/private/learner-context.txt` only into generated output.
 
 ## Engine
