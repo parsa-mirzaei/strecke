@@ -103,3 +103,66 @@ The product owner reset the priority to a usable personal product. The security 
 4. Real vocabulary and one week of actual use.
 
 Not in MVP2 until real use shows they are needed: offline cache with event queue and background sync, hardened mode, two full AI pipelines, deeper brand work. The architecture keeps room for them. These slices replace the Phase 1–7 order for now.
+
+## 2026-10-07 · Station: redesign and data-driven exercises
+
+The product owner's brief of 2026-10-07 changes the interface, the exercise model and the engine. It pre-approves the scope and data-model changes below (marked [OK]). The security docs and the privacy rules still take precedence over the brief. Design: [design/STATION.md](design/STATION.md).
+
+**D36 Station replaces the Heft [OK].** The interface becomes *Station*: one card at a time on warm paper, sentences on dark boards, a mono label strip for context, and one rule: amber marks what you have to retrieve. This replaces D33 (Heft) and the "calm notebook" look in CLAUDE.md. Work now runs in **phases A–F** (SPEC "Build phases"), which replace the MVP2 slices of D35. Slice 1's Heft code is replaced in Phase C. `HEFT.md` is kept with a "superseded" banner, as `PROTOTYPE.md` was.
+
+**D37 Seven principles govern every screen and string [OK].** These are: evidence, not rewards; never make the learner feel behind; only claims the event log supports; companion, not teacher; alive but quiet; honesty is free; the science is invisible. They are written out in STATION.md, and copy is reviewed against them.
+
+**D38 Optional record columns [OK].** `words` gains optional `plural`, `example_de`, `example_en`, `example_form`, `example_2_de`, `example_2_en`, `example_2_form`, `collocation`, `prep`, `note`, `wrong_1`, `wrong_2` and `image_key`. They are appended after the existing columns, so the change is additive. A missing column never breaks anything; it only means fewer exercises. The minimum record is `de`, `en`, `pos`, `domain`, plus `article` for nouns.
+- The Inbox gets a **v2 header** with the same columns. The importer keeps accepting the v1 header, and the validator gives every new column the existing rigour: enums (`prep` from a closed list, `image_key` from the bundled allow-list), length caps, at most 14 words per example, the form contained in its example, no formulas, URLs, markup or invisible characters.
+- Agent rows must also carry `example_de` and `example_en`; thin rows are for the learner's own entries.
+- `docs/sheet-readme.md`, `agents/contract.md` and the validators change together with their tests in Phase B, so the docs never describe a header the code rejects.
+- `word_state` gains `stability`, `difficulty` and `reps` (a derivable cache, see D41).
+
+**D39 Exercises are generated from the record [OK].** The pure function `exercisesFor(word, allWords)` in `core/` derives the exercises (Karte, Artikel, Bedeutung, Lücke, Präposition, Hören, Tippen, Zweiter Kontext) from whatever columns a row has. A new Sheet row therefore produces exercises with no code change.
+- The `prompts` tab becomes an optional override layer.
+- For the same word, the legacy `cloze_1/2`, `listen_de/en` and `prompts` rows win over generated values. A compat layer in `core/` maps them, with tests.
+- Distractors come from other records: same `pos`, same `tier` preferred, never the answer, never duplicates. When fewer than three candidates exist, the exercise is skipped.
+
+**D40 Typed answers are in scope [OK].** *Tippen* appears from stage 3. Matching is forgiving:
+- After trimming, NFC, collapsing spaces and dropping final punctuation, an exact answer is correct.
+- Case, ß/ss and ä/ae-style differences also count as correct; the correct spelling is shown quietly.
+- One edit away (two for answers of 10+ characters) is a *near miss*: it counts as correct, rated "hard", and shows *Fast: …*.
+- A typed leading article matching the word's article is ignored.
+- "Typing answers" leaves the "Out of v0.1" list.
+
+**D41 Scheduler: the ladder picks the exercise, FSRS-5 picks the time.** The engine is a pure function of the append-only event log plus `start_stage`, folded in `(ts, event_id)` order, so it replays identically and can be re-tuned.
+- The **stage ladder (0–5)** decides which exercise types a word is ready for.
+- An **FSRS-5 memory model** (stability, difficulty, retrievability; published default parameters; target retention from `config.retention`, default 0.9; interval cap 120 days) decides when it is due. It is implemented in `core/` in about 150 lines with no dependency.
+- FSRS was chosen because it is the best-documented open model, it replays from a log by design, and it can be fitted to this learner later with the optimizer (still out of scope).
+- **Ratings come from behaviour:** wrong or *Weiß ich nicht* → Again; right but with help (text shown in Hören, Tippen near miss) or slow (over the exercise's time threshold) → Hard; right → Good. Easy is not inferred in v0.1.
+- Karte is "seen", not a grade: it schedules a short recall a few cards later in the same visit.
+- **Known limit:** one memory state per word, although recognition is easier than recall. The picker therefore prefers the stage's gate exercise, and every event logs its exercise type, so a per-type model can be fitted later.
+- FSRS leaves the "Out of v0.1" list; the optimizer stays out.
+- `config.checkpoint_every` is removed (the checkpoint was dropped in D34) and `config.retention` is added.
+
+**D42 Interaction rules.**
+- **No self-grading buttons anywhere.** Every graded exercise offers a quiet *Weiß ich nicht*, which counts as a miss and is treated exactly like a wrong answer, calmly. This replaces the labels *Neu für mich*, *Kenne ich schon*, *Hatte ich*, *Nicht ganz* and *nochmal*.
+- After an answer the card stays, showing the filled blank and its meaning, until *Weiter* or a swipe up. This replaces "grading advances immediately" and the ≤ 200 ms card-to-card rule with the brief's motion values (enter 680 ms, exit 340 ms, all interruptible).
+- The every-fifth-gap "sag es laut" invitation is dropped, because it is instruction copy.
+
+**D43 Screens [OK].**
+- *Dein Weg* replaces the Progress page: only claims the log supports, with no scores or coverage percentages. The rules are in STATION.md.
+- A *Vorschläge* list returns next to the in-feed `VORSCHLAG` Karte. This partly reverses D34, because the brief lists the screen.
+- *Wörter* allows editing and suspending a word. Extending the writer's editable fields to the new columns happens in Phase D.
+- *Hinzufügen* is the existing capture flow; *Einstellungen* has no goals.
+
+**D44 Fonts, icons, pictograms and asset budget.** All verified on npm on 2026-10-07 and re-checked against the package `LICENSE` files when installed in Phase C. `NOTICE.md` records source, version and licence.
+- **Fonts:** Overpass and Overpass Mono via `@fontsource/overpass` and `@fontsource/overpass-mono` 5.3.0, SIL OFL 1.1, self-hosted. Literata and Fira Sans are removed.
+- **UI icons:** Lucide via `lucide-static` 1.52.0, ISC; some icons derive from Feather, MIT, whose notice is kept. Its 2 px round-cap stroke matches the Station look. The SVGs are copied into the bundle as inline components, so it adds no runtime dependency.
+- **Per-word pictograms** (`image_key`) use the same Lucide set, not OpenMoji. OpenMoji is CC BY-SA 4.0, which brings attribution and share-alike duties, and a second style would break visual consistency. `image_key` is an allow-list of bundled Lucide names for concrete nouns where a picture helps (bus stop, ID card, form, …); otherwise none. There are no photos, stock illustrations or generated images.
+- **Budget, compressed:** fonts ≤ 160 KB (woff2, latin + latin-ext, three weights + one mono), icons + pictograms ≤ 25 KB, and the whole app (JS + CSS + fonts + icons) ≤ 300 KB.
+
+**D45 [ASK] How the app reaches Core: the brief and D31 disagree.**
+- **The brief says:** follow D24 and `security/ARCHITECTURE.md`: no shared secret, no web endpoint, a vault account, and the PWA using the learner's own Google sign-in. The security gate stays FAIL until the owner steps are done.
+- **D31/D32 say (approved 2026-10-06):** an Apps Script web app with a per-instance token (a shared secret), with the vault made optional.
+- **Until the owner decides,** Phases B–D build only against the `demo` and `local` adapters, which do not depend on this choice, and Phase E does not start.
+- **Engineering note:** D24's cost is a vault account (about 20 minutes of owner steps) and a Google sign-in that may need re-confirming about hourly; the phone test in Phase E measures how often. D31's cost is a token that, if leaked from the phone, opens all of Core.
+
+**D46 Data adapters.** The UI and the scheduler talk only to a `DataAdapter` interface with three implementations: `demo` (bundled ~20 synthetic items, no sync), `local` (IndexedDB + fixtures, for development and tests) and `sheet` (real Core). The `sheet` adapter is unit-tested against fakes and never connected to a real Core before the gate passes and the owner says go.
+
+**D47 Starter seed.** `data/seed/seed-50.csv` holds about 50 general A2–B1 records in the new layout: about 2/3 core, 1/3 chunks, with a few deliberately thin rows. It is gitignored, as is all seed content. `tools/seed-check.ts` (committed, no content) validates any seed file with the same validator and prints a report. The seed loads through the importer and writer into a local/fixture Core, and into the real Core only in Phase F with the owner's go. The demo deck is regenerated in the new layout (synthetic, committed).

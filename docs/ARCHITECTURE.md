@@ -8,10 +8,13 @@ Strecke is an offline-first PWA for A2–B1 German learners. It opens straight i
 
 | Component | Where | Status | Role |
 | --- | --- | --- | --- |
-| Security core | [core/src/](../core/src) | Built, 124 tests | Pure TypeScript, no runtime dependencies. Shared by the PWA and the Apps Script backend. Everything that decides whether data may enter or change Core |
+| Security core | [core/src/](../core/src) | Built, 124 tests; new record columns in Phase B (D38) | Pure TypeScript, no runtime dependencies. Shared by the PWA and the Apps Script backend. Everything that decides whether data may enter or change Core |
 | Inbox setup | [apps-script/inbox-setup.gs](../apps-script/inbox-setup.gs) | Built, not yet run | Creates the Inbox tabs and locks all but the agent columns |
-| Backend triggers | `apps-script/` | Phase 1 | Importer (hourly), agent-view publisher, daily backup. Bound to Core in the vault account. **No web endpoint** |
-| PWA | `app/` | Phase 3 | Feed, engine, IndexedDB cache, event queue. Talks to Core with the learner's own OAuth token |
+| Exercise generator | `core/src/` | Phase B | `exercisesFor(word, allWords)`: exercises and distractors derived from a record's columns; compat layer for legacy prompts/clozes ([SPEC "Exercises"](SPEC.md#exercises-generated-from-the-record)) |
+| Scheduler | `core/src/` | Phase B | Pure fold over the event log: stage ladder (which exercise) + FSRS-5 memory model (when); *Dein Weg* evidence functions |
+| Data adapters | `app/src/data/` | Phase B (`demo`, `local`), Phase E (`sheet`) | One `DataAdapter` interface; UI and scheduler never know the source. `sheet` is tested against fakes until D45 is decided and the gate allows real data |
+| Backend triggers | `apps-script/` | Phase E | Importer (hourly), agent-view publisher, daily backup. Bound to Core. Whether a web endpoint exists depends on D45 (security architecture: none) |
+| PWA | `app/` | Phase C–D (Station UI; the Heft prototype of MVP2 slice 1 is live until then) | Practice, Dein Weg, Wörter, Hinzufügen, Vorschläge, Einstellungen; IndexedDB cache, event queue. Reaches Core through the `sheet` adapter (transport per D45) |
 | Agent contract and routine | [agents/contract.md](../agents/contract.md), [agents/routine.md](../agents/routine.md) | Built (docs) | What the weekly agent is told, and the routine configuration that limits it |
 | Phase 0 spike | `spike/` | Retired | Throwaway test page and endpoint from the risk spike |
 | Tools | [tools/](../tools) | Built | Privacy audit before commits; sheet hash manifests for recovery checks; Phase 0 validators |

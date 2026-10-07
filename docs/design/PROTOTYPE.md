@@ -1,6 +1,6 @@
 # Feed prototype: design plan
 
-> Superseded by [HEFT.md](HEFT.md) (MVP2, 2026-10-06). Kept as the record of the first prototype.
+> Superseded by [HEFT.md](HEFT.md) (MVP2, 2026-10-06), which was in turn superseded by [STATION.md](STATION.md) (2026-10-07). Kept as the record of the first prototype.
 
 Frontend prototype on synthetic data. Question: **would the learner open Strecke instead of a social feed in an idle minute?** No Core, no Inbox, no network.
 

@@ -1,5 +1,7 @@
 # The Heft: MVP2 interface
 
+> Superseded by [STATION.md](STATION.md) (2026-10-07, DECISIONS D36). Kept as the record of MVP2 slice 1.
+
 Replaces the card prototype ([PROTOTYPE.md](PROTOTYPE.md)). Decision: [DECISIONS D33](../DECISIONS.md).
 
 **Test it has to pass:** with two idle minutes and Instagram one tap away, Strecke is easy and attractive enough to sometimes win. No streaks, no counts, no session to finish.
