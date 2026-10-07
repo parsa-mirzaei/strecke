@@ -37,10 +37,10 @@ export const PREPOSITIONS = [
  */
 export const IMAGE_KEYS = [
   'bus', 'train-front', 'tram-front', 'bike', 'car', 'plane', 'ticket', 'map-pin', 'id-card', 'file-text',
-  'mail', 'phone', 'key', 'house', 'building-2', 'landmark', 'hospital', 'pill', 'stethoscope', 'shopping-cart',
+  'mail', 'phone', 'key', 'house', 'building', 'landmark', 'hospital', 'pill', 'stethoscope', 'shopping-cart',
   'shopping-bag', 'wallet', 'credit-card', 'banknote', 'receipt', 'calendar', 'clock', 'umbrella', 'shirt',
   'coffee', 'utensils', 'apple', 'book-open', 'graduation-cap', 'laptop', 'printer', 'briefcase', 'backpack',
-  'bed', 'lamp', 'trash-2', 'package', 'scissors', 'glasses', 'baby', 'dog', 'sun', 'cloud-rain', 'snowflake',
+  'bed', 'lamp', 'trash', 'package', 'scissors', 'glasses', 'baby', 'dog', 'sun', 'cloud-rain', 'snowflake',
 ] as const;
 
 /**

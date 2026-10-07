@@ -1,23 +1,19 @@
 import { render } from 'preact';
-import '@fontsource/fira-sans/latin-400.css';
-import '@fontsource/fira-sans/latin-500.css';
 import './styles/fonts.css';
-import './styles/app.css';
-import { App } from './App';
-import { MockAdapter } from './data/adapter';
-import { applyTheme, getTheme, watchSystemTheme } from './ui/theme';
+import './styles/station.css';
+import { openSource } from './data/source';
+import { Practice } from './station/Practice';
 
-applyTheme(getTheme());
-watchSystemTheme();
-
-// Prototype: local synthetic data only. A Core adapter replaces this after the security gate.
-const adapter = new MockAdapter();
-
-adapter.load().then((snapshot) => {
-  const root = document.getElementById('app')!;
-  root.textContent = '';
-  render(<App adapter={adapter} snapshot={snapshot} />, root);
-});
+// Open straight into the first card, rendered from the device (IndexedDB); nothing waits on a network.
+openSource()
+  .then(async (adapter) => {
+    const snapshot = await adapter.load();
+    render(<Practice adapter={adapter} snapshot={snapshot} />, document.getElementById('app')!);
+  })
+  .catch((err) => {
+    console.error(err);
+    document.getElementById('app')!.textContent = 'Strecke konnte nicht starten. Bitte neu laden.';
+  });
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {

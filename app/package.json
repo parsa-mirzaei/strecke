@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Strecke PWA. Feed prototype on synthetic data.",
+  "description": "Strecke PWA: the Station interface.",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
@@ -19,8 +19,8 @@
   },
   "devDependencies": {
     "@babel/core": "7.29.7",
-    "@fontsource-variable/literata": "5.3.0",
-    "@fontsource/fira-sans": "5.3.0",
+    "@fontsource/overpass": "5.3.0",
+    "@fontsource/overpass-mono": "5.3.0",
     "@preact/preset-vite": "2.10.6",
     "@types/node": "24.19.1",
     "typescript": "5.9.3",

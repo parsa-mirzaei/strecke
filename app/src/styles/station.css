@@ -1,0 +1,344 @@
+/* Station (docs/design/STATION.md): station signage on warm paper. Sentences sit on dark boards;
+   amber marks the one thing to retrieve or do next. Light is the reference; dark keeps the roles. */
+
+:root {
+  --paper: #f4f0e6;
+  --paper-2: #eae4d6;
+  --ink: #1b2430;
+  --ink-2: #5b6270;
+  --line: #c9c4b8;
+  --signal: #f2a900;
+  --signal-edge: #9c6c00;
+  --ok: #1f7a5c;
+  --board: #1b2430;
+  --board-ink: #f4f0e6;
+  --board-mute: #b7bdc8;
+
+  --gutter: 16px;
+  --radius: 6px;
+  /* Motion tokens. Card values are the brief's; UI feedback uses the strong ease-out. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-card: cubic-bezier(0.22, 0.9, 0.28, 1.02);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --font: 'Overpass', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: 'Overpass Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #13171d;
+    --paper-2: #1c2129;
+    --ink: #ece6d8;
+    --ink-2: #a3a9b4;
+    --line: #3a424e;
+    --signal-edge: #f2a900;
+    --ok: #4db38d;
+    --board: #262e3a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --paper: #13171d;
+  --paper-2: #1c2129;
+  --ink: #ece6d8;
+  --ink-2: #a3a9b4;
+  --line: #3a424e;
+  --signal-edge: #f2a900;
+  --ok: #4db38d;
+  --board: #262e3a;
+  color-scheme: dark;
+}
+
+/* ---------------------------------------------------------------- base and mobile baseline */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior: none;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.45;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--signal-edge);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- shell */
+
+.app {
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  padding-top: env(safe-area-inset-top, 0px);
+  overflow: hidden;
+}
+
+.strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 0 calc(var(--gutter) - 10px + env(safe-area-inset-right, 0px)) 0 calc(var(--gutter) + env(safe-area-inset-left, 0px));
+}
+
+/* The one label strip: context, like the line plate on a platform sign. */
+.label {
+  font-family: var(--mono);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  display: flex;
+  gap: 12px;
+}
+
+.icon-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--ink-2);
+  transition: transform 160ms var(--ease-out), color 160ms ease;
+}
+.icon-button:active { transform: scale(0.92); color: var(--ink); }
+
+.stage {
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---------------------------------------------------------------- card */
+
+.card {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 4px calc(var(--gutter) + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  /* The card owns vertical drags (swipe up to continue); pinch zoom stays with the browser. */
+  touch-action: pinch-zoom;
+  will-change: transform;
+  background: var(--paper);
+}
+
+.card-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 22px;
+  /* Top-anchored like a sign; the empty space falls to the thumb zone above the actions. */
+  padding: clamp(8px, 7dvh, 64px) 0 8px;
+}
+
+.answer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Article plate: shown, not asked, so it is ink, not amber. In the Artikel exercise the same plate
+   becomes the amber gap, in the same place. */
+.chip {
+  display: inline-block;
+  min-width: 44px;
+  padding: 3px 8px 1px;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.25;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.headword {
+  margin: 0;
+  font-weight: 800;
+  font-size: clamp(44px, 15vw, 60px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  /* Never break inside a word; Karte shrinks the size to fit the longest word instead. */
+  overflow-wrap: normal;
+  hyphens: manual;
+}
+.headword.is-phrase {
+  font-size: clamp(30px, 9vw, 40px);
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+}
+
+.plural {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 17px;
+}
+
+.pictogram {
+  flex: none;
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+/* The board: a sentence as a station display. */
+.board {
+  margin: 0;
+  background: var(--board);
+  color: var(--board-ink);
+  border-radius: var(--radius);
+  padding: 18px 20px 17px;
+  font-weight: 600;
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+.board mark {
+  background: none;
+  color: inherit;
+  text-decoration: underline 3px var(--signal);
+  text-underline-offset: 6px;
+  text-decoration-skip-ink: none;
+}
+
+/* The meaning slot and the amber cover over it. */
+.meaning {
+  position: relative;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+}
+.meaning-text {
+  margin: 0;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  background-color: var(--signal);
+  /* A fine hatch, like tape over a sign: quiet texture so the plate reads as something to lift. */
+  background-image: repeating-linear-gradient(135deg, rgb(0 0 0 / 0.045) 0 2px, transparent 2px 9px);
+  box-shadow: inset 0 0 0 1px var(--signal-edge);
+  transition: transform 180ms var(--ease-out);
+  will-change: transform;
+}
+.cover:active { transform: scale(0.985); }
+
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 4.5em;
+}
+.details > * { margin: 0; }
+.translation { color: var(--ink-2); font-size: 17px; }
+.collocation { font-weight: 600; font-size: 17px; }
+.note { color: var(--ink-2); font-size: 15px; }
+.speak-invite { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
+
+.details[data-hidden] > * { visibility: hidden; }
+
+/* ---------------------------------------------------------------- actions */
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+
+.btn {
+  height: 60px;
+  border-radius: var(--radius);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.005em;
+  transition: transform 180ms var(--ease-out), background-color 160ms ease, opacity 200ms var(--ease-out);
+}
+.btn:active { transform: scale(0.97); }
+.btn-outline { box-shadow: inset 0 0 0 2px var(--ink); }
+.btn-outline:active { background: var(--paper-2); }
+.btn-primary { background: var(--signal); color: #1b2430; box-shadow: inset 0 0 0 1px var(--signal-edge); }
+.btn-primary[hidden] { display: block; visibility: hidden; }
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-outline:hover { background: var(--paper-2); }
+  .icon-button:hover { color: var(--ink); }
+  .cover:hover { filter: brightness(1.03); }
+}
+
+/* ---------------------------------------------------------------- calm end state */
+
+.rest {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  padding: 0 calc(var(--gutter) + 8px) calc(16px + env(safe-area-inset-bottom, 0px));
+}
+.rest h1 { margin: 0; font-weight: 800; font-size: clamp(40px, 12vw, 56px); letter-spacing: -0.02em; line-height: 1; }
+.rest .btn { width: min(100%, 220px); }
+
+/* Short phones: keep everything on one screen. */
+@media (max-height: 640px) {
+  .card-body { gap: 14px; }
+  .headword { font-size: clamp(38px, 12vw, 48px); }
+  .board { font-size: 19px; padding: 14px 16px; }
+  .meaning { min-height: 56px; }
+  .meaning-text { font-size: 22px; }
+}

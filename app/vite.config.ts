@@ -1,6 +1,28 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import preact from '@preact/preset-vite';
 import { defineConfig, type Plugin } from 'vite';
+
+const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+
+/**
+ * Development only: serves the gitignored starter seed (data/seed/seed-50.csv) at /__dev/seed.csv so the
+ * `local` adapter can import it on a phone in the same Wi-Fi. Never part of a build; never deployed.
+ */
+function devSeed(): Plugin {
+  return {
+    name: 'strecke-dev-seed',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/__dev/seed.csv', (_req, res) => {
+        readFile(here('../data/seed/seed-50.csv'), 'utf8')
+          .then((csv) => { res.setHeader('Content-Type', 'text/csv; charset=utf-8'); res.setHeader('Cache-Control', 'no-store'); res.end(csv); })
+          .catch(() => { res.statusCode = 404; res.end(); });
+      });
+    },
+  };
+}
 
 /**
  * Writes sw.js after the build with the exact list of emitted files, so the app shell, fonts and
@@ -50,11 +72,18 @@ self.addEventListener('fetch', (e) => {
 
 export default defineConfig({
   base: './',
-  plugins: [preact(), serviceWorker()],
+  plugins: [preact(), serviceWorker(), devSeed()],
+  resolve: { alias: { '@core': here('../core/src') } },
   build: {
     target: 'es2022',
     assetsInlineLimit: 0,
     sourcemap: false,
   },
-  server: { host: true, port: 5173 },
+  server: {
+    host: true,
+    port: 5173,
+    // The dev server is reachable from the phone on the LAN: it may read the app and the shared core,
+    // nothing else in the repository (no data/, no docs, no tools).
+    fs: { strict: true, allow: [here('.'), here('../core/src')] },
+  },
 });

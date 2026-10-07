@@ -3,33 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#16171b" />
-    <meta name="description" content="Strecke: Deutsch für zwischendurch. Öffnen, und du bist schon dabei." />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F0E6" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#13171D" />
+    <meta name="description" content="Deutsch üben, eine Karte nach der anderen." />
     <title>Strecke</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
-    <script>
-      // Theme before first paint (dark first; see src/ui/theme.ts). No flash on open.
-      try {
-        var t = localStorage.getItem('strecke.theme');
-        var light = t === 'light' || (t === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
-        if (light) {
-          document.documentElement.classList.add('boot-light');
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f1f0ec');
-        }
-      } catch (e) {}
-    </script>
     <style>
-      /* First paint before the bundle, in the right theme. */
-      html, body { margin: 0; background: #16171b; color: #8c877c; font-family: system-ui, sans-serif; }
-      .boot-light, .boot-light body { background: #f1f0ec; color: #6b675f; }
-      .boot { display: grid; place-items: center; height: 100dvh; font-size: 0.875rem; }
+      /* First paint before the bundle, in the right scheme, so opening never flashes. */
+      html, body { margin: 0; background: #F4F0E6; }
+      @media (prefers-color-scheme: dark) { html, body { background: #13171D; } }
     </style>
   </head>
   <body>
-    <div id="app"><div class="boot">Strecke</div></div>
+    <div id="app"></div>
     <noscript>Strecke braucht JavaScript.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
