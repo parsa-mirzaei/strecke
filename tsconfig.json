@@ -8,10 +8,11 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
+    "erasableSyntaxOnly": true,
     "exactOptionalPropertyTypes": false,
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["core/**/*.ts", "tools/security/**/*.ts"]
+  "include": ["core/**/*.ts", "tools/security/**/*.ts", "tools/seed-check.ts"]
 }

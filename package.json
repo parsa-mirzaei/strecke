@@ -7,13 +7,16 @@
   "scripts": {
     "test": "vitest run",
     "test:security": "vitest run --reporter=verbose",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "coverage": "vitest run --coverage",
+    "seed-check": "node tools/seed-check.ts"
   },
   "engines": {
     "node": ">=24"
   },
   "devDependencies": {
     "@types/node": "24.19.1",
+    "@vitest/coverage-v8": "3.2.7",
     "typescript": "5.9.3",
     "vitest": "3.2.7"
   }
