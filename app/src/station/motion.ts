@@ -16,8 +16,52 @@ export const DUR = {
   reduced: 200,
 } as const;
 
-/** Distance a new card rises from (px). */
+/** Distance a new card rises from (px), for the default profile. */
 export const ENTER_OFFSET = 48;
+
+export interface MotionProfile {
+  enter: number;
+  enterOffset: number;
+  enterEase: string;
+  exit: number;
+  cover: number;
+  coverEase: string;
+  coverFrames: Keyframe[];
+  detailsDelay: number;
+}
+
+/**
+ * Motion character per visual style (DECISIONS D50). Same mechanics everywhere (interruptible, swipe
+ * physics, reduced motion); only pacing and the cover's gesture differ.
+ */
+const PROFILES: Record<string, MotionProfile> = {
+  // Anzeiger: a display flap. Crisp and mechanical; the cover folds up on its top edge.
+  '1': {
+    enter: 380, enterOffset: 20, enterEase: EASE_OUT, exit: 240,
+    cover: 420, coverEase: 'cubic-bezier(0.55, 0, 0.1, 1)',
+    coverFrames: [{ transform: 'perspective(600px) rotateX(0deg)', opacity: 1 }, { transform: 'perspective(600px) rotateX(-92deg)', opacity: 0.2 }],
+    detailsDelay: 160,
+  },
+  // Emaille: an enamel plate. Calm, with weight; the cover slides aside like a plate on a rail.
+  '2': {
+    enter: 560, enterOffset: 40, enterEase: EASE_CARD, exit: 320,
+    cover: 560, coverEase: EASE_DRAWER,
+    coverFrames: [{ transform: 'translateX(0)' }, { transform: 'translateX(calc(100% + 24px))' }],
+    detailsDelay: 220,
+  },
+  // Klartext: type only. Quick and soft; the amber blank wipes away left to right like ink lifting.
+  '3': {
+    enter: 420, enterOffset: 14, enterEase: EASE_OUT, exit: 260,
+    cover: 380, coverEase: EASE_OUT,
+    coverFrames: [{ clipPath: 'inset(0 0 0 0)' }, { clipPath: 'inset(0 0 0 100%)' }],
+    detailsDelay: 140,
+  },
+};
+
+export function profile(): MotionProfile {
+  const s = typeof document === 'undefined' ? '2' : document.documentElement.dataset.style ?? '2';
+  return PROFILES[s] ?? PROFILES['2']!;
+}
 
 export function reducedMotion(): boolean {
   return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;

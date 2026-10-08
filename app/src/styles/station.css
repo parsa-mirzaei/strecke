@@ -1,5 +1,6 @@
-/* Station (docs/design/STATION.md): station signage on warm paper. Sentences sit on dark boards;
-   amber marks the one thing to retrieve or do next. Light is the reference; dark keeps the roles. */
+/* Station (docs/design/STATION.md, BRIEF.md): structure and shared mechanics. The visual direction comes
+   from one style layer (style-1.css, style-2.css, style-3.css), selected by <html data-style>. Tokens
+   here are neutral fallbacks; every style sets its own. Amber marks the one thing to retrieve or do. */
 
 :root {
   --paper: #f4f0e6;
@@ -9,46 +10,21 @@
   --line: #c9c4b8;
   --signal: #f2a900;
   --signal-edge: #9c6c00;
+  --signal-ink: #1b2430;
   --ok: #1f7a5c;
   --board: #1b2430;
   --board-ink: #f4f0e6;
   --board-mute: #b7bdc8;
+  --strip-bg: var(--paper);
+  --strip-ink: var(--ink-2);
 
   --gutter: 16px;
   --radius: 6px;
-  /* Motion tokens. Card values are the brief's; UI feedback uses the strong ease-out. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --ease-card: cubic-bezier(0.22, 0.9, 0.28, 1.02);
-  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
-  --font: 'Overpass', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --mono: 'Overpass Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: var(--font);
   color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --paper: #13171d;
-    --paper-2: #1c2129;
-    --ink: #ece6d8;
-    --ink-2: #a3a9b4;
-    --line: #3a424e;
-    --signal-edge: #f2a900;
-    --ok: #4db38d;
-    --board: #262e3a;
-    color-scheme: dark;
-  }
-}
-:root[data-theme='dark'] {
-  --paper: #13171d;
-  --paper-2: #1c2129;
-  --ink: #ece6d8;
-  --ink-2: #a3a9b4;
-  --line: #3a424e;
-  --signal-edge: #f2a900;
-  --ok: #4db38d;
-  --board: #262e3a;
-  color-scheme: dark;
 }
 
 /* ---------------------------------------------------------------- base and mobile baseline */
@@ -108,29 +84,27 @@ button {
   height: 100dvh;
   display: grid;
   grid-template-rows: auto 1fr;
-  padding-top: env(safe-area-inset-top, 0px);
   overflow: hidden;
+  background: var(--paper);
 }
 
 .strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   min-height: 52px;
-  padding: 0 calc(var(--gutter) - 10px + env(safe-area-inset-right, 0px)) 0 calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  padding: env(safe-area-inset-top, 0px) calc(var(--gutter) - 10px + env(safe-area-inset-right, 0px)) 0 calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  background: var(--strip-bg);
+  color: var(--strip-ink);
 }
 
-/* The one label strip: context, like the line plate on a platform sign. */
 .label {
-  font-family: var(--mono);
-  font-weight: 600;
-  font-size: 12px;
-  line-height: 1;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-2);
   display: flex;
-  gap: 12px;
+  gap: 10px;
+  align-items: center;
+  font-size: 14px;
+  line-height: 1;
 }
 
 .icon-button {
@@ -139,24 +113,24 @@ button {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  color: var(--ink-2);
-  transition: transform 160ms var(--ease-out), color 160ms ease;
+  color: inherit;
+  transition: transform 160ms var(--ease-out), opacity 160ms ease;
 }
-.icon-button:active { transform: scale(0.92); color: var(--ink); }
+.icon-button:active { transform: scale(0.92); }
 
 .stage {
   position: relative;
   overflow: hidden;
 }
 
-/* ---------------------------------------------------------------- card */
+/* ---------------------------------------------------------------- card structure */
 
 .card {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  padding: 4px calc(var(--gutter) + env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) calc(var(--gutter) + env(safe-area-inset-left, 0px));
+  padding: 0 calc(var(--gutter) + env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) calc(var(--gutter) + env(safe-area-inset-left, 0px));
   /* The card owns vertical drags (swipe up to continue); pinch zoom stays with the browser. */
   touch-action: pinch-zoom;
   will-change: transform;
@@ -168,156 +142,86 @@ button {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
   gap: 22px;
-  /* Top-anchored like a sign; the empty space falls to the thumb zone above the actions. */
-  padding: clamp(8px, 7dvh, 64px) 0 8px;
+  padding: 16px 0 8px;
 }
 
-.answer {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
+.display { display: flex; flex-direction: column; gap: 20px; }
 
 .head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 14px;
 }
+/* The text column may shrink, so a long word is measured against the real width (fit-to-width). */
+.head-text { flex: 1; min-width: 0; }
 
-/* Article plate: shown, not asked, so it is ink, not amber. In the Artikel exercise the same plate
-   becomes the amber gap, in the same place. */
-.chip {
-  display: inline-block;
-  min-width: 44px;
-  padding: 3px 8px 1px;
-  border: 2px solid var(--ink);
-  border-radius: 4px;
-  font-weight: 800;
-  font-size: 17px;
-  line-height: 1.25;
-  text-align: center;
-  margin-bottom: 8px;
-}
+.chip { display: inline-block; }
 
 .headword {
   margin: 0;
-  font-weight: 800;
-  font-size: clamp(44px, 15vw, 60px);
+  font-family: var(--font-display);
   line-height: 1;
-  letter-spacing: -0.025em;
-  /* Never break inside a word; Karte shrinks the size to fit the longest word instead. */
   overflow-wrap: normal;
   hyphens: manual;
 }
-.headword.is-phrase {
-  font-size: clamp(30px, 9vw, 40px);
-  line-height: 1.08;
-  letter-spacing: -0.015em;
-}
 
-.plural {
-  margin: 8px 0 0;
-  color: var(--ink-2);
-  font-size: 17px;
-}
+.plural { margin: 6px 0 0; }
+.pictogram { flex: none; display: grid; place-items: center; }
 
-.pictogram {
-  flex: none;
-  color: var(--ink-2);
-  margin-top: 2px;
-}
+.board { margin: 0; }
+.board mark { background: none; color: inherit; }
 
-/* The board: a sentence as a station display. */
-.board {
-  margin: 0;
-  background: var(--board);
-  color: var(--board-ink);
-  border-radius: var(--radius);
-  padding: 18px 20px 17px;
-  font-weight: 600;
-  font-size: 22px;
-  line-height: 1.35;
-  letter-spacing: -0.005em;
-}
-.board mark {
-  background: none;
-  color: inherit;
-  text-decoration: underline 3px var(--signal);
-  text-underline-offset: 6px;
-  text-decoration-skip-ink: none;
-}
+.answer { display: flex; flex-direction: column; gap: 10px; }
 
-/* The meaning slot and the amber cover over it. */
 .meaning {
   position: relative;
-  min-height: 64px;
+  min-height: 56px;
   display: flex;
   align-items: center;
 }
-.meaning-text {
-  margin: 0;
-  font-weight: 800;
-  font-size: 26px;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
-}
+.meaning-text { margin: 0; }
 
 .cover {
   position: absolute;
   inset: 0;
-  border-radius: var(--radius);
   background-color: var(--signal);
-  /* A fine hatch, like tape over a sign: quiet texture so the plate reads as something to lift. */
-  background-image: repeating-linear-gradient(135deg, rgb(0 0 0 / 0.045) 0 2px, transparent 2px 9px);
-  box-shadow: inset 0 0 0 1px var(--signal-edge);
-  transition: transform 180ms var(--ease-out);
+  transition: transform 160ms var(--ease-out);
   will-change: transform;
 }
 .cover:active { transform: scale(0.985); }
 
-.details {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  min-height: 4.5em;
-}
+.details { display: flex; flex-direction: column; gap: 6px; }
 .details > * { margin: 0; }
-.translation { color: var(--ink-2); font-size: 17px; }
-.collocation { font-weight: 600; font-size: 17px; }
-.note { color: var(--ink-2); font-size: 15px; }
-.speak-invite { color: var(--ink-2); font-size: 15px; margin-top: 6px; }
-
 .details[data-hidden] > * { visibility: hidden; }
 
 /* ---------------------------------------------------------------- actions */
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 2fr;
-  gap: 12px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 8px;
 }
 
 .btn {
   height: 60px;
   border-radius: var(--radius);
-  font-weight: 800;
+  font-weight: 700;
   font-size: 18px;
-  letter-spacing: 0.005em;
-  transition: transform 180ms var(--ease-out), background-color 160ms ease, opacity 200ms var(--ease-out);
+  transition: transform 160ms var(--ease-out), background-color 160ms ease, opacity 200ms var(--ease-out);
 }
 .btn:active { transform: scale(0.97); }
-.btn-outline { box-shadow: inset 0 0 0 2px var(--ink); }
-.btn-outline:active { background: var(--paper-2); }
-.btn-primary { background: var(--signal); color: #1b2430; box-shadow: inset 0 0 0 1px var(--signal-edge); }
+.btn-primary { background: var(--signal); color: var(--signal-ink); }
 .btn-primary[hidden] { display: block; visibility: hidden; }
+/* Fertig: available, never competing. Text weight only, no box. */
+.btn-quiet { padding: 0 18px 0 2px; color: var(--ink-2); font-weight: 600; font-size: 17px; }
+.btn-outline { padding: 0 20px; box-shadow: inset 0 0 0 2px var(--ink); }
 
 @media (hover: hover) and (pointer: fine) {
-  .btn-outline:hover { background: var(--paper-2); }
-  .icon-button:hover { color: var(--ink); }
-  .cover:hover { filter: brightness(1.03); }
+  .btn-quiet:hover { color: var(--ink); }
+  .icon-button:hover { opacity: 0.75; }
 }
 
 /* ---------------------------------------------------------------- calm end state */
@@ -331,14 +235,13 @@ button {
   gap: 28px;
   padding: 0 calc(var(--gutter) + 8px) calc(16px + env(safe-area-inset-bottom, 0px));
 }
-.rest h1 { margin: 0; font-weight: 800; font-size: clamp(40px, 12vw, 56px); letter-spacing: -0.02em; line-height: 1; }
+.rest h1 { margin: 0; font-family: var(--font-display); font-size: clamp(40px, 12vw, 56px); line-height: 1; }
 .rest .btn { width: min(100%, 220px); }
 
-/* Short phones: keep everything on one screen. */
-@media (max-height: 640px) {
-  .card-body { gap: 14px; }
-  .headword { font-size: clamp(38px, 12vw, 48px); }
-  .board { font-size: 19px; padding: 14px 16px; }
-  .meaning { min-height: 56px; }
-  .meaning-text { font-size: 22px; }
+/* ---------------------------------------------------------------- dev style switcher */
+
+.style-switch { display: flex; gap: 2px; }
+.style-switch button {
+  width: 30px; height: 30px; border-radius: 4px; font-size: 13px; font-weight: 700; opacity: 0.55;
 }
+.style-switch button[aria-pressed='true'] { opacity: 1; box-shadow: inset 0 0 0 2px currentColor; }

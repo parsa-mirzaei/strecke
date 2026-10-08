@@ -6,6 +6,7 @@ import type { WordRecord } from '@core/record.ts';
 import { afterCard, newSession, pickNext, replay, type LearnEvent } from '@core/scheduler.ts';
 import { speech, type VoiceStatus } from '../audio/tts';
 import { randomBytes } from '../data/source';
+import { STYLES, applyStyle, dev, freezeAnimations, review, settleAnimations, type StyleId } from '../dev';
 import { Icon } from '../ui/Icon';
 import { Karte } from './Karte';
 import { DOMAIN_LABEL } from './text';
@@ -58,9 +59,35 @@ export function Practice({ adapter, snapshot }: { adapter: DataAdapter; snapshot
     return card;
   };
 
-  const [cards, setCards] = useState<Card[]>(() => { const c = pick(); return c ? [c] : []; });
+  const first = (): Card | null => {
+    // Design review: start on a given word (dev only).
+    const w = dev.word ? words.find((x) => x.de === dev.word) : undefined;
+    const x = w && exercises.get(w.id)?.[0];
+    if (w && x) { shown.current++; return { key: nextKey.current++, word: w, exercise: x, shownAt: Date.now(), invite: false, leaving: null }; }
+    return pick();
+  };
+  const [cards, setCards] = useState<Card[]>(() => { const c = first(); return c ? [c] : []; });
+
+  // Design review: put the first card into a state and hold it still for a screenshot (dev only).
+  useEffect(() => {
+    if (!dev.state) return;
+    const t = setTimeout(() => {
+      if (dev.state === 'cover') { settleAnimations(); return; }
+      (document.querySelector('.cover') as HTMLButtonElement | null)?.click();
+      setTimeout(() => {
+        settleAnimations();
+        if (dev.state === 'next') {
+          (document.querySelector('.btn-primary') as HTMLButtonElement | null)?.click();
+          setTimeout(() => freezeAnimations(200), 30);
+        }
+      }, 900);
+    }, 300);
+    return () => clearTimeout(t);
+  }, []);
   const [resting, setResting] = useState(cards.length === 0);
   const [voice, setVoice] = useState<VoiceStatus>(speech.status);
+  const [style, setStyle] = useState(document.documentElement.dataset.style ?? '2');
+  const pickStyle = (s: StyleId) => { applyStyle(s); setStyle(s); };
   useEffect(() => speech.subscribe(setVoice), []);
 
   const current = cards.find((c) => !c.leaving) ?? null;
@@ -116,6 +143,13 @@ export function Practice({ adapter, snapshot }: { adapter: DataAdapter; snapshot
           {domain ? <span>{domain}</span> : null}
           {adapter.kind === 'demo' ? <span>Demo</span> : null}
         </div>
+        {(dev.enabled || review) && !dev.state ? (
+          <div class="style-switch" role="group" aria-label="Stil (nur Entwicklung)">
+            {STYLES.map((s) => (
+              <button type="button" key={s} aria-pressed={style === s} onClick={() => pickStyle(s)}>{s}</button>
+            ))}
+          </div>
+        ) : null}
         {voice === 'ready' && current && !resting ? (
           <button class="icon-button" type="button" onClick={speak} aria-label="Vorlesen">
             <Icon name="volume-2" />

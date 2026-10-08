@@ -3,8 +3,7 @@ import type { Exercise } from '@core/exercises.ts';
 import type { WordRecord } from '@core/record.ts';
 import { Icon } from '../ui/Icon';
 import {
-  DUR, EASE_CARD, EASE_DRAWER, EASE_OUT, ENTER_OFFSET, animateSpring, currentY, haptic, reducedMotion,
-  releaseVelocity, rubberband,
+  DUR, EASE_OUT, animateSpring, currentY, haptic, profile, reducedMotion, releaseVelocity, rubberband,
 } from './motion';
 import { splitTarget } from './text';
 
@@ -73,11 +72,12 @@ export function Karte(props: KarteProps) {
   useLayoutEffect(() => {
     const el = cardRef.current!;
     const reduce = reducedMotion();
+    const p = profile();
     motion.current.enter = el.animate(
       reduce
         ? [{ opacity: 0 }, { opacity: 1 }]
-        : [{ transform: `translateY(${ENTER_OFFSET}px)`, opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }],
-      { duration: reduce ? DUR.reduced : DUR.cardEnter, easing: EASE_CARD },
+        : [{ transform: `translateY(${p.enterOffset}px)`, opacity: 0 }, { transform: 'translateY(0)', opacity: 1 }],
+      { duration: reduce ? DUR.reduced : p.enter, easing: p.enterEase },
     );
   }, []);
 
@@ -92,7 +92,8 @@ export function Karte(props: KarteProps) {
     const reduce = reducedMotion();
     const distance = Math.max(160, el.offsetHeight * 0.45);
     const speed = Math.abs(Math.min(0, leaving.velocity));
-    const duration = reduce ? DUR.reduced : speed > 0 ? Math.min(DUR.cardExit, Math.max(180, distance / speed)) : DUR.cardExit;
+    const exit = profile().exit;
+    const duration = reduce ? DUR.reduced : speed > 0 ? Math.min(exit, Math.max(160, distance / speed)) : exit;
     el.style.pointerEvents = 'none';
     const anim = el.animate(
       reduce
@@ -126,11 +127,10 @@ export function Karte(props: KarteProps) {
     const reduce = reducedMotion();
     const cover = coverRef.current!;
     const hadFocus = document.activeElement === cover;
+    const p = profile();
     const lift = cover.animate(
-      reduce
-        ? [{ opacity: 1 }, { opacity: 0 }]
-        : [{ transform: 'translateX(0)' }, { transform: 'translateX(calc(100% + 24px))' }],
-      { duration: reduce ? DUR.reduced : DUR.coverLift, easing: EASE_DRAWER, fill: 'forwards' },
+      reduce ? [{ opacity: 1 }, { opacity: 0 }] : p.coverFrames,
+      { duration: reduce ? DUR.reduced : p.cover, easing: p.coverEase, fill: 'forwards' },
     );
     lift.onfinish = () => setCoverGone(true);
     // Translation, collocation and note arrive after the meaning, one by one.
@@ -138,12 +138,12 @@ export function Karte(props: KarteProps) {
     items.forEach((node, i) => {
       node.animate(
         reduce ? [{ opacity: 0 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
-        { duration: reduce ? DUR.reduced : 320, delay: reduce ? 0 : DUR.detailsDelay + i * DUR.detailsStagger, easing: EASE_OUT, fill: 'backwards' },
+        { duration: reduce ? DUR.reduced : 320, delay: reduce ? 0 : p.detailsDelay + i * DUR.detailsStagger, easing: EASE_OUT, fill: 'backwards' },
       );
     });
     nextRef.current?.animate(
       [{ opacity: 0, transform: reduce ? 'none' : 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
-      { duration: 240, delay: reduce ? 0 : 180, easing: EASE_OUT, fill: 'backwards' },
+      { duration: 240, delay: reduce ? 0 : Math.min(180, p.cover / 3), easing: EASE_OUT, fill: 'backwards' },
     );
     if (hadFocus) requestAnimationFrame(() => nextRef.current?.focus({ preventScroll: true }));
   }
@@ -189,7 +189,7 @@ export function Karte(props: KarteProps) {
         base = stopEnter(el);
         // Start from the finger, not from where the slop ended: no jump.
         startY = e.clientY;
-        el.setPointerCapture(e.pointerId);
+        try { el.setPointerCapture(e.pointerId); } catch { /* pointer already gone: the drag still tracks via the card */ }
       }
       samples.push({ y: e.clientY, t: e.timeStamp });
       if (samples.length > 12) samples.shift();
@@ -254,15 +254,19 @@ export function Karte(props: KarteProps) {
   const translation = exercise.sentence ? exercise.sentenceEn : '';
 
   return (
-    <article class="card" ref={cardRef} aria-label={word.de} aria-hidden={leaving ? true : undefined}>
+    <article
+      class={`card${isPhrase ? ' is-phrase' : ''}${exercise.sentence ? '' : ' is-thin'}`}
+      ref={cardRef} aria-label={word.de} aria-hidden={leaving ? true : undefined}
+    >
       <div class="card-body">
+        <div class="display">
         <header class="head">
-          <div>
+          <div class="head-text">
             {word.article ? <span class="chip" lang="de">{word.article}</span> : null}
             <h1 class={isPhrase ? 'headword is-phrase' : 'headword'} lang="de" ref={headRef}>{word.de}</h1>
             {word.plural ? <p class="plural" lang="de"><span class="sr-only">Plural: </span>{word.plural}</p> : null}
           </div>
-          {word.imageKey ? <span class="pictogram"><Icon name={word.imageKey} size={32} /></span> : null}
+          {word.imageKey ? <span class="pictogram"><Icon name={word.imageKey} size={28} /></span> : null}
         </header>
 
         {exercise.sentence ? (
@@ -270,6 +274,7 @@ export function Karte(props: KarteProps) {
             {parts ? <>{parts[0]}<mark>{parts[1]}</mark>{parts[2]}</> : exercise.sentence}
           </figure>
         ) : null}
+        </div>
 
         <section class="answer">
         <div class="meaning">
@@ -290,7 +295,7 @@ export function Karte(props: KarteProps) {
       </div>
 
       <div class="actions">
-        <button class="btn btn-outline" type="button" onClick={props.onFinish}>Fertig</button>
+        <button class="btn btn-quiet" type="button" onClick={props.onFinish}>Fertig</button>
         <button class="btn btn-primary" type="button" ref={nextRef} hidden={!revealed} onClick={() => props.onAdvance(0)}>
           Weiter
         </button>

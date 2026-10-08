@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-style="2">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -38,6 +38,12 @@
       .chosen { box-shadow: inset 0 0 0 2px var(--ink), 0 0 0 3px var(--signal); }
       .haptics { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
       .haptics > div { display: grid; gap: 8px; }
+      .styles { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+      .styles figure { margin: 0; flex: none; scroll-snap-align: start; }
+      .styles iframe { width: 390px; height: 844px; border: 0; transform: scale(0.62); transform-origin: 0 0; }
+      .styles .frame { width: calc(390px * 0.62); height: calc(844px * 0.62); overflow: hidden; border: 2px solid var(--line); border-radius: 10px; }
+      .styles figcaption { margin-top: 8px; font-size: 15px; max-width: calc(390px * 0.62); }
+      .styles figcaption strong { display: block; font-size: 17px; }
     </style>
   </head>
   <body>
@@ -45,6 +51,15 @@
       <p class="label">Phase C · design comparison</p>
       <h1>Pictograms, images, motion, haptics</h1>
       <p class="muted">Three candidates per question, judged against the seven principles in STATION.md. The finalist is marked; the reasoning is in DECISIONS D49. Motion and haptics only mean something on the phone.</p>
+
+      <h2>0. Three styles, live</h2>
+      <p class="muted">The real Karte, real seed data, one style per frame. Tap the cover, swipe up. Load the same word into all three:</p>
+      <div class="buttons" id="words"></div>
+      <div class="styles" id="styles">
+        <figure><div class="frame"><iframe title="Stil 1" data-style="1"></iframe></div><figcaption><strong>1 · Anzeiger</strong>A departure display: German on one dark panel, the answer on paper. Condensed signage type, flap motion.</figcaption></figure>
+        <figure><div class="frame"><iframe title="Stil 2" data-style="2"></iframe></div><figcaption><strong>2 · Emaille</strong>Enamel plates on grained paper, resting low near the thumb. Overpass, calm sliding plate.</figcaption></figure>
+        <figure><div class="frame"><iframe title="Stil 3" data-style="3"></iframe></div><figcaption><strong>3 · Klartext</strong>Type only: one ink rule holds the German, the blank is a line of amber. Atkinson Hyperlegible Next.</figcaption></figure>
+      </div>
 
       <h2>1. Pictograms</h2>
       <p class="muted">Line, single colour, for concrete nouns only. Same nine words in each set.</p>
@@ -82,6 +97,20 @@
       import { ICONS } from '/src/ui/icons.ts';
       // Generated locally by tools/app/compare_icons.py and gitignored; without it only Lucide is shown.
       const others = await fetch('./compare-icons.json').then((r) => (r.ok ? r.json() : null)).catch(() => null);
+
+      // Live styles: same word in all three frames.
+      const WORDS = ['Anmeldung', 'Krankenkasse', 'Können Sie bitte langsamer sprechen?', 'Schrank', 'Formular'];
+      const frames = [...document.querySelectorAll('#styles iframe')];
+      const load = (w) => frames.forEach((f) => { f.src = `/?style=${f.dataset.style}&word=${encodeURIComponent(w)}`; });
+      const wb = document.getElementById('words');
+      for (const w of WORDS) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-outline';
+        b.textContent = w;
+        b.addEventListener('click', () => load(w));
+        wb.append(b);
+      }
+      load(WORDS[0]);
 
       const NS = 'http://www.w3.org/2000/svg';
       const NAMES = ['bus', 'id-card', 'file-text', 'receipt', 'pill', 'calendar', 'house', 'graduation-cap', 'banknote'];
