@@ -255,3 +255,38 @@ The product owner's brief of 2026-10-07 changes the interface, the exercise mode
   - The build is about 24 KB JS + 2.3 KB CSS gzipped, plus the fonts.
 - **Lucide renames.** Lucide 1.x renamed `building-2` to `building` and `trash-2` to `trash`. The `image_key` allow-list now uses the canonical names; no data used the old ones.
 - **Not deployed.** GitHub Pages deploys on every push to `main`, so the slice is tested from the dev server (same Wi-Fi, or USB port forwarding) and is not pushed until the owner says so.
+
+## 2026-10-08 · Design critique and three styles (Karte)
+
+**D50 Redesign round: brief, audit, three styles, no questions asked.** The owner asked for a professional design round with every assumption recorded instead of asked. Brief: [design/BRIEF.md](design/BRIEF.md). Audit, styles and recommendation: [design/REVIEW-KARTE.md](design/REVIEW-KARTE.md).
+
+*Skills* (listed again; the same set as in D49; no review or critique skill is installed):
+- `clarify`: **used** in self-answering mode, as the owner asked. Its four buckets (ambiguity, scope, tradeoffs, irreversible actions) were answered from the project's own material into BRIEF.md; nothing was asked.
+- `frontend-design`: **used** for the plan-review-build-critique loop and its list of generated-design tells, which became part of the slop test.
+- `emil-design-eng`: **used** for press feedback, curves, exit faster than enter, and frequency-based motion budgets (shorter card motion in styles 1 and 3).
+- `apple-design`: **used** for spring release with velocity hand-off, rubber band, interruptibility, and type tracking by size.
+- `animate`: **used** for one motion profile per style, reduced motion per profile (fades only, checked in headless Chrome), and the cover gesture chosen per style (flap, slide, wipe).
+- `mobile-native`: **used** for `theme-color` following each style's top colour, the 48 px touch area for style 3's thin blank, and safe areas.
+- `built-in-browser`: **used** to exercise all three styles live (cover, swipe, fonts, theme colour).
+- `artifact-design` (via the Artifact quickstart): **used** only to package the phone review page.
+- `deep-research`: skipped (it needs subagents; the research was small and done directly).
+- `canvas-design`, `brand-guidelines`, `web-artifacts-builder`, `dataviz`, `graphify` and the document, office and other skills: skipped (not relevant to this UI work).
+
+*Assumptions made instead of questions:*
+1. "Station" is a metaphor (legible public signage), not trains or any operator's look.
+2. The type may change this round: OFL, self-hosted, Latin only.
+3. Styles are layers over the same components; no data, scheduler or behaviour changes.
+4. The review build uses the synthetic demo deck: the seed stays local, as with every published artifact of this project.
+5. After the owner picks, the other two styles and their fonts are deleted. Until then all fonts are bundled (190 KB); a single style needs 50–65 KB.
+6. The default style is 1, so the owner meets the styles in order and the recommendation does not bias the first look.
+7. No firewall or network change is made to reach the phone (a system setting). The owner's Wi-Fi is a public-profile campus network where the dev server is not reachable, so a private claude.ai artifact of the review build carries the phone test. Haptics cannot be judged there, because the browser blocks vibration inside the page frame; they are identical in all three styles and were judged before.
+8. Commits stay local; nothing is pushed.
+
+*Engineering:*
+- **Dev-only URL parameters** (`theme`, `word`, `state`) and `tools/app/shots.mjs` give repeatable screenshots of every card state through the Chrome DevTools protocol, with Node's built-in WebSocket and no new dependency. `?style=` works in every build.
+- **Review build:** `VITE_REVIEW=1` shows the style switcher and skips the service worker. `tools/app/review_page.py` inlines it into one page; `app/dist-review/` is gitignored.
+- **Fixes found by the audit:** the headword's text column may now shrink (`min-width: 0`), so long compounds are measured against the real width. `setPointerCapture` is guarded. *Fertig* is a quiet text button in every style.
+- **Fonts:** Overpass Mono was removed (no style uses it). Barlow, Barlow Semi Condensed and Atkinson Hyperlegible Next were added as pinned dev dependencies, with install scripts off. `npm audit` shows only the known Vitest advisories.
+- **Measured:** contrast for every text pair in all styles is ≥ 5.6:1, and amber edges ≥ 3.8:1. Build: 25 KB JS + 4 KB CSS gzipped.
+- **Recommendation: style 3 "Klartext"** (reasons in REVIEW-KARTE.md). The owner decides.
+

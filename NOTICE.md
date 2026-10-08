@@ -4,14 +4,30 @@ Everything below is self-hosted inside this repository or bundled at build time.
 
 ## Shipped in the app
 
-### Overpass and Overpass Mono (fonts)
+### Overpass (font; style 2)
 
 - **Project:** The Overpass Project Authors (Red Hat), https://github.com/RedHatOfficial/Overpass
-- **Package:** `@fontsource/overpass` 5.3.0 and `@fontsource/overpass-mono` 5.3.0 (npm, Fontsource), dev dependencies; only four woff2 files are bundled (Overpass latin 400, 600, 800; Overpass Mono latin 600)
+- **Package:** `@fontsource/overpass` 5.3.0 (npm, Fontsource), dev dependency; three woff2 files are bundled (latin 400, 600, 800). Overpass Mono was removed on 2026-10-08 (D50)
 - **Licence:** SIL Open Font License 1.1. The fonts may be used, bundled and redistributed with software, including commercially; they may not be sold on their own, and modified versions must stay under the OFL and not use the reserved name. Full text: `app/node_modules/@fontsource/overpass/LICENSE`, also https://openfontlicense.org
-- **Used for:** all text in the app (Overpass) and the context label strip (Overpass Mono)
+- **Used for:** all text in style 2 "Emaille"
 
 Copyright 2021 The Overpass Project Authors (https://github.com/RedHatOfficial/Overpass)
+
+### Barlow and Barlow Semi Condensed (fonts; style 1)
+
+- **Project:** The Barlow Project Authors (Jeremy Tribby), https://github.com/jpt/barlow
+- **Package:** `@fontsource/barlow` 5.3.0 and `@fontsource/barlow-semi-condensed` 5.3.0 (npm, Fontsource), dev dependencies; latin 500 and 600 (Barlow), latin 600 and 700 (Semi Condensed) are bundled
+- **Licence:** SIL Open Font License 1.1, read from the `LICENSE` file in each package. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
+- **Used for:** style 1 "Anzeiger" (word, labels and buttons in Semi Condensed, text in Barlow)
+
+### Atkinson Hyperlegible Next (font; style 3)
+
+- **Project:** The Atkinson Hyperlegible Next Project Authors (Braille Institute), https://github.com/googlefonts/atkinson-hyperlegible-next
+- **Package:** `@fontsource/atkinson-hyperlegible-next` 5.3.0 (npm, Fontsource), dev dependency; latin 400, 600, 800 are bundled
+- **Licence:** SIL Open Font License 1.1, read from the package `LICENSE`. Copyright 2020-2024 The Atkinson Hyperlegible Next Project Authors (https://github.com/googlefonts/atkinson-hyperlegible-next)
+- **Used for:** style 3 "Klartext" (all text)
+
+While the three styles are compared, all their fonts are bundled. After the owner picks one, the fonts of the other two are removed.
 
 ### Lucide (icons and pictograms)
 
@@ -82,6 +98,14 @@ Nine pictograms from each set appear only on the development comparison page `ap
 - Phosphor Icons: `@phosphor-icons/core` 2.1.1, https://github.com/phosphor-icons/core. MIT License, Copyright (c) 2023 Phosphor Icons
 
 Both under the MIT terms reproduced above (with their own copyright lines).
+
+### References consulted, nothing copied (2026-10-08 design review)
+
+Openly licensed design systems of transport and public services were studied for principles only (one signal colour for what is actionable, large touch targets, type sized for distance). No code, asset, colour palette, typeface or pictogram was taken from them. Their licences, read from the official repositories:
+- DB UX Design System (Deutsche Bahn), https://github.com/db-ux-design-system/core-web: code Apache-2.0; DB fonts, icons, trademarks and branding explicitly excluded
+- SBB Lyne components (Swiss Federal Railways), https://github.com/sbb-design-systems/lyne-components: code MIT, Copyright (c) 2018-2024 SBB AG
+- U.S. Web Design System, https://github.com/uswds/uswds: mostly public domain, with listed exceptions
+- GOV.UK Frontend, https://github.com/alphagov/govuk-frontend: code MIT, Crown Copyright; its Transport typeface is not licensed for other services
 
 ### Tooling
 

@@ -1,5 +1,7 @@
 # Station: the Strecke interface
 
+> **Under review (2026-10-08, D50):** three visual styles of the same Station rules are being compared ([BRIEF.md](BRIEF.md), [REVIEW-KARTE.md](REVIEW-KARTE.md)). The principles, the amber rule and the screens below stay; the type and tokens will follow the chosen style.
+
 Replaces the Heft ([HEFT.md](HEFT.md)). Decisions: [DECISIONS D36–D45](../DECISIONS.md). Exercise and engine rules: [SPEC "Exercises" and "Learning engine"](../SPEC.md).
 
 ## Why the app exists
