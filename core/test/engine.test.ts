@@ -154,6 +154,24 @@ describe('distractor rules', () => {
     expect(k.options.sort()).toEqual(expect.arrayContaining(['vereinbaren']));
     expect(k.options).toHaveLength(3);
   });
+  it('collocation: light verbs and the wrong word class are never offered (found on real rows)', () => {
+    const e = rec({ de: 'Erfahrung', article: 'die', en: 'experience', pos: 'noun', collocation: 'Erfahrung sammeln' });
+    const t = rec({ de: 'Termin', article: 'der', en: 'appointment', pos: 'noun', collocation: 'einen Termin machen' });
+    const f = rec({ de: 'Formular', article: 'das', en: 'form', pos: 'noun', collocation: 'ein Formular ausfüllen' });
+    const m = rec({ de: 'Miete', article: 'die', en: 'rent', pos: 'noun', collocation: 'die Miete überweisen' });
+    const v = rec({ de: 'verschieben', en: 'to postpone', pos: 'verb', collocation: 'einen Termin verschieben' });
+    const k = type(ext(e, [e, t, f, m, v], { fewerOptions: true }), 'kollokation')!;
+    expect(k.options).not.toContain('machen');
+    expect(k.options).not.toContain('Termin');
+    expect(k.options).toContain('sammeln');
+  });
+  it('forms in the middle of a sentence keep the capitalisation of the answer (no noun for a verb gap)', () => {
+    const a = rec({ de: 'gültig', en: 'valid', pos: 'adj', example_de: 'Ihr Ausweis ist nur noch zwei Monate gültig.', example_en: 'x' });
+    const b = rec({ de: 'ehrlich', en: 'honest', pos: 'adj', example_de: 'Ehrlich gesagt weiß ich es nicht.', example_en: 'x', example_form: 'Ehrlich' });
+    const c = rec({ de: 'dringend', en: 'urgent', pos: 'adj', example_de: 'Es ist dringend.', example_en: 'x' });
+    const d = rec({ de: 'müde', en: 'tired', pos: 'adj', example_de: 'Ich bin müde.', example_en: 'x' });
+    expect(type(ext(a, [a, b, c, d]), 'luecke')!.options).not.toContain('Ehrlich');
+  });
   it('previously confused options come first', () => {
     const rechnung = by(all, 'Rechnung');
     const base = type(ext(rechnung, all), 'bedeutung')!.options;

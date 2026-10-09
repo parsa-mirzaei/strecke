@@ -153,3 +153,20 @@ test('control: the audit does catch overflow, clipping and zone breaks', async (
   expect(problems.some((p) => p.startsWith('text clipped'))).toBe(true);
   expect(problems.some((p) => p.startsWith('outside its zone') || p.startsWith('zone outside'))).toBe(true);
 });
+
+// The learner's own seed (gitignored, served only by the dev server): the same audit, no screenshots kept.
+// Runs only with REAL=1 so a clean checkout never needs private data.
+test.describe('real seed', () => {
+  test.skip(!process.env.REAL, 'set REAL=1 to run on the local seed');
+  for (const [w, h] of [[320, 600], [390, 844]] as const) {
+    test(`every type on the real rows at ${w}x${h}`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: h });
+      for (const type of TYPES) {
+        await open(page, `/?force=${type}&pick=longest`);
+        expect(await audit(page), type).toEqual([]);
+        await answer(page);
+        expect(await audit(page), `${type} answered`).toEqual([]);
+      }
+    });
+  }
+});

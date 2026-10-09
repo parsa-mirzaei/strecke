@@ -60,6 +60,16 @@ export interface Pool {
   confusions?: Confusions;
 }
 
+/** Upper-case start (a noun) or not: a distractor of the other kind gives the answer away in the middle of a sentence. */
+const upper = (s: string) => /^\p{Lu}/u.test(clean(s));
+
+/**
+ * Light verbs combine with almost any noun (*Erfahrungen machen*, *eine Frage haben*), so as wrong partners
+ * they are often right. Never offered as a collocation distractor.
+ */
+export const LIGHT_VERBS = new Set(['machen', 'haben', 'sein', 'werden', 'geben', 'nehmen', 'bringen', 'kommen', 'gehen', 'lassen', 'tun',
+  'stellen', 'halten', 'bekommen', 'kriegen', 'finden', 'setzen', 'legen', 'führen', 'treffen', 'ziehen', 'holen']);
+
 const lengthFit = (a: string, b: string) => Math.max(0, 6 - Math.abs(a.length - b.length));
 const startFit = (a: string, b: string) => (fold(a)[0] === fold(b)[0] ? 3 : 0);
 
@@ -128,10 +138,12 @@ export function formDistractors(q: Pool, answer: string, gapped: string, formOf:
   const known = knownGerman(q.all);
   const sentence = fold(gapped.replace('___', ' '));
   const ending = fold(answer).slice(-2);
+  const midSentence = !clean(gapped).startsWith('___');
   const cands = others(q)
     .map((o) => ({ value: formOf(o), owner: o, bonus: fold(formOf(o)).slice(-2) === ending ? 40 : 0 }))
     .filter((c) => {
       const v = fold(c.value);
+      if (midSentence && upper(c.value) !== upper(answer)) return false;
       if (!v || sameStem(c.value, answer) || sameStem(c.owner.de, q.w.de)) return false;
       if (meaningsOverlap(c.owner.en, q.w.en)) return false;
       if (new RegExp(`(?<![\\p{L}])${escapeRe(v)}(?![\\p{L}])`, 'u').test(sentence)) return false;
@@ -198,6 +210,7 @@ export function collocationDistractors(q: Pool, split: CollocationSplit, n = 2):
     const s = collocationSplit(o);
     if (!s) continue;
     const v = fold(s.answer);
+    if (LIGHT_VERBS.has(v) || upper(s.answer) !== upper(split.answer)) continue;
     if (valid.has(v) || sameStem(s.answer, split.answer) || known.includes(fold(split.gapped.replace('___', s.answer)))) continue;
     cands.push({ value: s.answer, owner: o, bonus: v.slice(-2) === fold(split.answer).slice(-2) ? 40 : 0 });
   }
