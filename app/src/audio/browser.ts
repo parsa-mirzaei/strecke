@@ -6,11 +6,12 @@
 import { evictions, dayKey, AudioService, type BlobCache, type CacheIndex, type Player, type Usage } from './service';
 import { cloud } from './elevenlabs';
 import { speech } from './tts';
+import { NS, lsKey } from '../ns';
 import type { Settings } from '@core/engine/settings.ts';
 
 // ---------------------------------------------------------------- key (device only, never exported)
 
-const KEY_NAME = 'strecke.audio.key';
+const KEY_NAME = lsKey('audio.key');
 export const keystore = {
   get(): string { try { return localStorage.getItem(KEY_NAME) ?? ''; } catch { return ''; } },
   set(k: string): boolean { try { localStorage.setItem(KEY_NAME, k.trim()); return true; } catch { return false; } },
@@ -20,8 +21,8 @@ export const keystore = {
 
 // ---------------------------------------------------------------- cache
 
-const CACHE = 'strecke-audio-v1';
-const INDEX = 'strecke.audio.index';
+const CACHE = `${NS}-audio-v1`;
+const INDEX = lsKey('audio.index');
 
 function readIndex(): CacheIndex {
   try { return JSON.parse(localStorage.getItem(INDEX) ?? '{}') as CacheIndex; } catch { return {}; }
@@ -102,7 +103,7 @@ const player: Player = {
 
 // ---------------------------------------------------------------- usage (characters generated today)
 
-const USAGE = 'strecke.audio.usage';
+const USAGE = lsKey('audio.usage');
 const usage: Usage = {
   get() {
     try {

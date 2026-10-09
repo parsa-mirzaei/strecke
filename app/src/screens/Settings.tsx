@@ -13,6 +13,7 @@ import { clearStore } from '../data/idb';
 import { KIND_LABEL } from '../run/parts';
 import { Icon } from '../ui/Icon';
 import { LICENCES } from './licences';
+import { NS } from '../ns';
 import { SheetSection } from './SheetSection';
 
 type Page = 'uebungen' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
@@ -251,7 +252,7 @@ function Daten({ ctx }: { ctx: Ctx }) {
   async function reset() {
     await clearStore();
     await audioCache.clear();
-    try { Object.keys(localStorage).filter((k) => k.startsWith('strecke.')).forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ }
+    try { Object.keys(localStorage).filter((k) => k.startsWith(`${NS}.`)).forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ }
     location.reload();
   }
 

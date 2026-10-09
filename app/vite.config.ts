@@ -7,6 +7,8 @@ import { defineConfig, type Plugin } from 'vite';
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const pkg = JSON.parse(readFileSync(here('./package.json'), 'utf8')) as { version: string };
+/** Storage namespace; a preview build sets VITE_NS=preview (see src/ns.ts). */
+const NS = process.env.VITE_NS ? `strecke-${process.env.VITE_NS}` : 'strecke';
 
 /**
  * Content-Security-Policy for the build (A9): scripts only from this origin, and the only hosts the app may
@@ -67,7 +69,7 @@ function serviceWorker(): Plugin {
       const precache = [...new Set([...shell, ...files.map((f) => `./${f}`)])];
       const version = createHash('sha256').update(precache.join('|')).digest('hex').slice(0, 10);
       const source = `// Generated at build time. Precache the app shell; serve it cache-first; works offline.
-const CACHE = 'strecke-${version}';
+const CACHE = '${NS}-${version}';
 const PRECACHE = ${JSON.stringify(precache)};
 
 self.addEventListener('install', (e) => {
@@ -75,10 +77,11 @@ self.addEventListener('install', (e) => {
 });
 
 self.addEventListener('activate', (e) => {
-  // Removes older Strecke caches, including the Phase 0 spike's.
+  // Removes this build's older shell caches only: never the audio cache, never another build's caches on the same origin.
+  const OLD = /^${NS}-[0-9a-f]{10}$/;
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== CACHE && OLD.test(k)).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -94,6 +97,11 @@ self.addEventListener('fetch', (e) => {
 });
 `;
       this.emitFile({ type: 'asset', fileName: 'sw.js', source });
+      if (process.env.VITE_NS) {
+        // A preview installs as its own app with its own name, next to the live one.
+        const manifest = JSON.parse(readFileSync(here('./public/manifest.webmanifest'), 'utf8')) as Record<string, unknown>;
+        this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: JSON.stringify({ ...manifest, name: 'Strecke Vorschau', short_name: 'Vorschau', id: `./?app=${NS}` }, null, 2) });
+      }
     },
   };
 }

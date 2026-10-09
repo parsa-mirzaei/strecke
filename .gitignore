@@ -24,3 +24,4 @@ app/dist-review/
 # Playwright output
 app/test-results/
 app/playwright-report/
+app/dist-preview/

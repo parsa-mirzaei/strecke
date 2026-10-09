@@ -1,12 +1,13 @@
 import type { KeyValueStore } from '@core/data/adapter.ts';
 import { MemoryStore } from '@core/data/adapter.ts';
+import { NS } from '../ns';
 
 /**
  * KeyValueStore on IndexedDB: one database, one object store, structured-clone values. About forty
  * lines, so no wrapper library is needed. Falls back to memory when IndexedDB is unavailable (some
  * private modes); the app keeps working, it just forgets on reload.
  */
-const DB = 'strecke';
+const DB = NS;
 const STORE = 'kv';
 
 function open(): Promise<IDBDatabase> {
