@@ -69,8 +69,10 @@ export function mapHeader(header: readonly string[]): HeaderMap {
   const seen = new Set<SheetColumn>();
   const unknown: string[] = [], repeated: SheetColumn[] = [];
   header.forEach((h, i) => {
-    const c = ALIAS_INDEX.get(foldHeader(h));
+    let c = ALIAS_INDEX.get(foldHeader(h));
     if (!c) { if (clean(h)) unknown.push(clean(h)); return; }
+    // "Bedeutung | Beispielsatz | Übersetzung": a second meaning-like column is the example's translation.
+    if (c === 'en' && seen.has('en') && !seen.has('example_en') && /uebersetzung|translation/.test(foldHeader(h))) c = 'example_en';
     if (seen.has(c)) { repeated.push(c); return; }
     seen.add(c);
     columns.set(i, c);

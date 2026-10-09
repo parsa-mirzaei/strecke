@@ -1,7 +1,7 @@
 import { useRef, useState } from 'preact/hooks';
 import type { Exercise, ExerciseType } from '@core/exercises.ts';
 import { splitTarget } from './text';
-import { CheckMark, Chip, Head, Hint, SEE_AGAIN, flyTo, splitGap, useFit, type ExerciseProps } from './parts';
+import { CheckMark, Chip, Head, Hint, SEE_AGAIN, flyTo, sizeClass, splitGap, useFit, type ExerciseProps } from './parts';
 import { Icon } from '../ui/Icon';
 
 const ASK: Partial<Record<ExerciseType, string>> = {
@@ -63,8 +63,8 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
     case 'kollokation':
       content = (
         <div class="front">
-          <p class="q">{before}{slotEl()}{after}</p>
-          {x.type === 'kollokation' ? <p class="qtr">„{w.en}“</p> : translation ? <p class="qtr">{translation}</p> : null}
+          <p class={`q${sizeClass(x.gapped, 70, 130)}`}>{before}{slotEl()}{after}</p>
+          {x.type === 'kollokation' ? <p class="qtr" lang="en">„{w.en}“</p> : translation ? <p class="qtr" lang="en">{translation}</p> : null}
         </div>
       );
       break;
@@ -72,7 +72,7 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
       content = (
         <div class="front">
           <p class="q">{slotEl()} <span>{w.de}</span></p>
-          <p class="qtr">{w.en}</p>
+          <p class="qtr" lang="en">{w.en}</p>
         </div>
       );
       break;
@@ -90,7 +90,7 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
         <div class="front">
           <Chip w={w} />
           <h1 class="word" ref={wordEl}>{w.de}</h1>
-          {x.sentence ? <p class="ex">{parts ? <>{parts[0]}<u>{parts[1]}</u>{parts[2]}</> : x.sentence}</p> : null}
+          {x.sentence ? <p class={`ex${sizeClass(x.sentence, 90, 150)}`}>{parts ? <>{parts[0]}<u>{parts[1]}</u>{parts[2]}</> : x.sentence}</p> : null}
           <div style={{ width: '100%', marginTop: '14px' }}>{slotEl(true)}</div>
         </div>
       );
@@ -101,7 +101,7 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
           <button class="play" type="button" onClick={() => speak(x.sentence || w.de, w.id)} aria-label="Satz anhören" disabled={!canSpeak}>
             <Icon name="volume-2" size={40} />
           </button>
-          {textShown ? <p class="shown-text">{x.sentence}</p> : (
+          {textShown ? <p class={`shown-text${sizeClass(x.sentence, 90, 150)}`}>{x.sentence}</p> : (
             <button class="more" type="button" style={{ alignSelf: 'center' }} onClick={() => setTextShown(true)} disabled={done}>Text zeigen</button>
           )}
           <div style={{ width: '100%', marginTop: '14px' }}>{slotEl(true)}</div>
@@ -129,7 +129,8 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
             const isMiss = done && chosen === o && o !== x.answer;
             return (
               <button
-                key={o} type="button" class={`tag${isRight ? ' right' : ''}${isMiss ? ' miss' : ''}`} disabled={done || busy}
+                key={o} type="button" class={`tag${o.length > 34 ? ' long' : ''}${isRight ? ' right' : ''}${isMiss ? ' miss' : ''}`} disabled={done || busy}
+                lang={x.type === 'bedeutung' || x.type === 'hoeren' ? 'en' : 'de'}
                 onClick={(e) => pick(o, e.currentTarget as HTMLElement)}
               >
                 <span>{o}</span>{isRight ? <CheckMark /> : null}

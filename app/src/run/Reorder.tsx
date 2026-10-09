@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import { Head, Hint, SEE_AGAIN, type ExerciseProps } from './parts';
+import { Head, Hint, SEE_AGAIN, sizeClass, type ExerciseProps } from './parts';
 
 /** Reihenfolge: tap the words in the order of the sentence. Tap a placed word to take it back. */
 export function Reorder({ card, speak, canSpeak, onAnswer, onNext, haptic }: ExerciseProps) {
@@ -38,7 +38,7 @@ export function Reorder({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exe
         <section class="card cl enter" aria-label="Reihenfolge">
           <Head kind="reihenfolge" text={x.answer} canSpeak={canSpeak && done} onSpeak={() => speak(x.answer, w.id)} />
           <div class="front">
-            {x.sentenceEn ? <p class="q">{x.sentenceEn}</p> : null}
+            {x.sentenceEn ? <p class={`q${sizeClass(x.sentenceEn, 60, 110)}`} lang="en">{x.sentenceEn}</p> : null}
             <div class={`built${result === 'right' ? ' right' : shownRight ? ' shown' : ''}`} aria-label="Dein Satz" aria-live="polite">
               {shownRight
                 ? <p class="shown-text" style={{ margin: 0 }}>{x.answer}</p>

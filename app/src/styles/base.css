@@ -113,7 +113,7 @@ input.slot { width: 6em; max-width: 100%; color: var(--ink); font-size: 1em; out
 .hint { margin: 0; min-height: 22px; text-align: center; font: 500 15px/1.3 var(--f-body); color: var(--ink2); }
 .choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .ch {
-  min-width: 0; height: 84px; border: 2px solid var(--c); background: var(--card); border-radius: 10px; font: 600 14px/1.15 var(--f-body);
+  min-width: 0; min-height: 84px; border: 2px solid var(--c); background: var(--card); border-radius: 10px; font: 600 14px/1.15 var(--f-body);
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 9px; padding: 0 2px; transition: border-color .3s, color .3s, background .3s;
 }
 .ch .st { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
@@ -261,7 +261,7 @@ details.more-set[open] > summary::before { content: "−"; }
   .tags { gap: 6px; }
   .tag { min-height: 42px; font-size: 18px; padding: 4px 14px; }
   .primary, .pair .ghost { min-height: 46px; font-size: 16px; }
-  .ch { height: 68px; font-size: 12.5px; gap: 6px; }
+  .ch { min-height: 68px; font-size: 12.5px; gap: 6px; padding-top: 6px; padding-bottom: 6px; }
   .sum h1, .page-title { font-size: 34px; }
   .stats dd { font-size: 32px; }
   .stats div { padding: 8px 0 6px; }
@@ -281,3 +281,35 @@ details.more-set[open] > summary::before { content: "−"; }
 :root[data-reduce-motion="1"] .enter { animation: fade .2s both; }
 .steps { margin: 6px 0 8px; padding-left: 22px; }
 .steps li { margin: 4px 0; }
+
+/* ---------- content-driven fit (round 3): long words, sentences and meanings ---------- */
+#app { overflow-wrap: anywhere; }
+.word.wrap { white-space: normal; hyphens: auto; line-height: 1.02; }
+.q, .ex, .shown-text { hyphens: auto; }
+.q.long { font-size: 28px; }
+.q.xlong { font-size: 22px; line-height: 1.25; }
+.ex.long { font-size: 19px; }
+.ex.xlong { font-size: 17px; }
+.mean.long { font-size: 28px; line-height: 1.1; }
+.mean.xlong { font-size: 21px; line-height: 1.2; font-family: var(--f-body); font-weight: 600; }
+.tags { max-height: 44dvh; overflow-y: auto; overscroll-behavior: contain; padding: 2px; margin: -2px; }
+.tag.long { font: 600 17px/1.25 var(--f-body); }
+.tag > span { min-width: 0; }
+.slot { max-width: 100%; white-space: normal; }
+.chips { max-height: 34dvh; overflow-y: auto; padding: 2px; margin: -2px; }
+.chip { max-width: 100%; }
+@media (max-height: 700px) {
+  .q.long { font-size: 23px; }
+  .q.xlong { font-size: 19px; }
+  .mean.long { font-size: 24px; }
+  .mean.xlong { font-size: 18px; }
+  .tags { max-height: 40dvh; }
+}
+.tag, .chip, .ch, .primary, .ghost, .small-btn, .quiet { flex-shrink: 0; }
+.ch, .primary, .ghost, .small-btn, .quiet, .kind, .run { overflow-wrap: normal; word-break: normal; }
+/* The four rating steps drop to two rows when their labels do not fit side by side (large text, narrow phone). */
+.choices.two { grid-template-columns: repeat(2, 1fr); }
+.choices.two .ch { height: auto; min-height: 52px; flex-direction: row; justify-content: flex-start; gap: 10px; padding: 6px 12px; text-align: left; }
+.ch .lbl { display: block; max-width: 100%; }
+.choices.one { grid-template-columns: 1fr; gap: 6px; }
+.choices.one .ch { height: auto; min-height: 44px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 4px 14px; }

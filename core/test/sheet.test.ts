@@ -22,6 +22,11 @@ describe('sheet contract: headers', () => {
     expect([...m.columns.values()]).toEqual(['en', 'de', 'article', 'plural', 'example_de', 'example_2_de', 'prep', 'domain', 'pos']);
     expect(m.missingRequired).toEqual([]);
   });
+  it('"Übersetzung" after a meaning column is the example translation', () => {
+    const m = mapHeader(['Wort', 'Bedeutung', 'Beispielsatz', 'Übersetzung']);
+    expect([...m.columns.values()]).toEqual(['de', 'en', 'example_de', 'example_en']);
+    expect([...mapHeader(['Wort', 'Übersetzung']).columns.values()]).toEqual(['de', 'en']);
+  });
   it('unknown columns are reported and ignored; a repeated column: the first wins', () => {
     const m = mapHeader(['de', 'en', 'Lernstand', 'Quelle', 'de']);
     expect(m.unknown).toEqual(['Lernstand', 'Quelle']);

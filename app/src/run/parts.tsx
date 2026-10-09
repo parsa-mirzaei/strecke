@@ -66,8 +66,11 @@ export function useFit(ref: RefObject<HTMLElement>, max: number, dep: unknown) {
     if (!el) return;
     const fit = () => {
       let s = innerHeight < 700 ? Math.min(max, 52) : max;
+      el.classList.remove('wrap');
       el.style.fontSize = `${s}px`;
       while (el.scrollWidth > el.clientWidth + 1 && s > 28) { s -= 2; el.style.fontSize = `${s}px`; }
+      // Still too wide at the floor (a 30+ letter compound on a narrow phone): let it break, never clip.
+      if (el.scrollWidth > el.clientWidth + 1) el.classList.add('wrap');
     };
     fit();
     document.fonts?.ready.then(fit).catch(() => undefined);
@@ -114,3 +117,6 @@ export const SEE_AGAIN = 'Das sehen wir bald wieder.';
 
 /** Words from the sheet shown in the answer area (English glosses stay as typed). */
 export const CheckMark = () => <Icon name="check" size={22} />;
+
+/** Size step for long content: '' up to `a` characters, 'long' up to `b`, 'xlong' beyond. */
+export const sizeClass = (text: string, a: number, b: number) => (text.length > b ? ' xlong' : text.length > a ? ' long' : '');

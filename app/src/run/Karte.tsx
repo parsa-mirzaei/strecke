@@ -1,9 +1,9 @@
-import { useRef, useState } from 'preact/hooks';
+import { useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Rating } from '@core/fsrs.ts';
 import { splitTarget } from './text';
 import { Icon } from '../ui/Icon';
 import { reducedMotion } from '../lib/haptics';
-import { Chip, EASE, Head, Hint, useFit, type ExerciseProps } from './parts';
+import { Chip, EASE, Head, Hint, sizeClass, useFit, type ExerciseProps } from './parts';
 
 /** The four steps about memory, not difficulty. Rising bars; the colour is the grade colour of the route. */
 const STEPS: Array<{ g: 0 | 1 | 2 | 3; label: string; rating: Rating }> = [
@@ -24,6 +24,31 @@ export function Karte({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
   const wordEl = useRef<HTMLHeadingElement>(null);
   const drag = useRef<{ y: number; moved: number; peel: number } | null>(null);
   useFit(wordEl, 72, w.id);
+  const choices = useRef<HTMLDivElement>(null);
+  // Labels that would break inside a word (large text on a narrow phone): two rows of two, else one list.
+  useLayoutEffect(() => {
+    const el = choices.current;
+    if (!el) return;
+    const broken = () => [...el.querySelectorAll<HTMLElement>('.ch')].some((b) => b.scrollWidth > b.clientWidth + 1) || [...el.querySelectorAll<HTMLElement>('.ch .lbl')].some((l) => l.scrollWidth > l.clientWidth + 1 || l.textContent!.split(' ').some((word) => {
+      const t = l.firstChild as Text | null;
+      if (!t) return false;
+      const r = document.createRange();
+      const i = t.data.indexOf(word);
+      r.setStart(t, i); r.setEnd(t, i + word.length);
+      return r.getClientRects().length > 1;
+    }));
+    const fit = () => {
+      el.classList.remove('two', 'one');
+      if (!broken()) return;
+      el.classList.add('two');
+      if (!broken()) return;
+      el.classList.replace('two', 'one');
+    };
+    fit();
+    document.fonts?.ready.then(fit).catch(() => undefined);
+    addEventListener('resize', fit);
+    return () => removeEventListener('resize', fit);
+  }, []);
 
   const parts = splitTarget(x.sentence, x.target);
 
@@ -96,17 +121,17 @@ export function Karte({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
             <h1 class="word" ref={wordEl}>{w.de}</h1>
             {w.plural ? <p class="pl">Pl. {w.plural}</p> : null}
             {x.sentence ? (
-              <p class="ex">{parts ? <>{parts[0]}<u>{parts[1]}</u>{parts[2]}</> : x.sentence}</p>
+              <p class={`ex${sizeClass(x.sentence, 90, 150)}`}>{parts ? <>{parts[0]}<u>{parts[1]}</u>{parts[2]}</> : x.sentence}</p>
             ) : null}
           </div>
           <div class="zone">
             <div class="back" ref={back} aria-hidden={!revealed}>
-              <p class="mean">{x.answer}</p>
+              <p class={`mean${sizeClass(x.answer, 28, 60)}`} lang="en">{x.answer}</p>
               {(x.sentenceEn || w.collocation || w.note) ? (
                 <button class="more" type="button" aria-expanded={more} onClick={() => setMore(!more)}>{more ? 'Weniger' : 'Mehr'}</button>
               ) : null}
               <div class="extra" hidden={!more}>
-                {x.sentenceEn ? <p class="tr">{x.sentenceEn}</p> : null}
+                {x.sentenceEn ? <p class="tr" lang="en">{x.sentenceEn}</p> : null}
                 {w.collocation ? <p class="col">{w.collocation}</p> : null}
                 {w.note ? <p class="tr">{w.note}</p> : null}
               </div>
@@ -123,11 +148,11 @@ export function Karte({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
       </main>
       <footer class="act enter">
         <Hint>{!revealed ? 'Weißt du es? Zieh die orange Fläche hoch oder tippe darauf.' : picked === null ? 'Wie gut wusstest du es?' : ''}</Hint>
-        <div class="choices" role="group" aria-label="Wie gut wusstest du es?">
+        <div class="choices" ref={choices} role="group" aria-label="Wie gut wusstest du es?">
           {STEPS.map((s, i) => (
             <button key={s.g} class={`ch${picked === i ? ' sel' : ''}`} type="button" data-g={s.g} disabled={!revealed || picked !== null} onClick={() => rate(i)}>
               <span class="st" aria-hidden="true">{BAR_H.map((h, k) => <b key={k} class={k <= s.g ? 'on' : ''} style={{ height: `${h}px` }} />)}</span>
-              {s.label}
+              <span class="lbl">{s.label}</span>
             </button>
           ))}
         </div>

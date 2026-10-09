@@ -1,6 +1,6 @@
 import { useRef, useState } from 'preact/hooks';
 import { matchTyped, type TypedVerdict } from '@core/typing.ts';
-import { Head, Hint, SEE_AGAIN, splitGap, type ExerciseProps } from './parts';
+import { Head, Hint, SEE_AGAIN, sizeClass, splitGap, type ExerciseProps } from './parts';
 
 /** Tippen: type the missing word into the blank. Matching is forgiving (spelling variants, one slip). */
 export function Typed({ card, speak, canSpeak, onAnswer, onNext, haptic }: ExerciseProps) {
@@ -41,7 +41,7 @@ export function Typed({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
         <section class="card cl enter" aria-label="Tippen">
           <Head kind="tippen" text={x.sentence} canSpeak={canSpeak} onSpeak={() => speak(x.sentence, w.id)} />
           <div class="front">
-            <p class="q">
+            <p class={`q${sizeClass(x.gapped, 70, 130)}`}>
               {before}
               {done ? (
                 <span class={`slot ${right ? 'right' : 'shown'}`}>{x.answer}</span>
@@ -54,7 +54,7 @@ export function Typed({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
               )}
               {after}
             </p>
-            {translation ? <p class="qtr">{translation}</p> : null}
+            {translation ? <p class="qtr" lang="en">{translation}</p> : null}
           </div>
         </section>
       </main>
