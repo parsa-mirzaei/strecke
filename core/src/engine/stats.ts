@@ -46,6 +46,8 @@ export interface Dashboard {
   today: DayStat;
   /** Monday to Sunday of the current week. */
   week: { days: DayStat[]; todayIndex: number; runs: number; cards: number; secured: number };
+  /** The last 30 days including today: totals only, no per-day pressure. */
+  month: { runs: number; cards: number; secured: number };
   words: { new: number; learning: number; secure: number; total: number };
   hard: { words: HardItem[]; kinds: HardItem[]; topics: HardItem[] };
   goal: { target: number; done: number } | null;
@@ -112,13 +114,19 @@ export function dashboard(input: DashboardInput): Dashboard {
   const todayIdx = weekday(now, off);
   const days: DayStat[] = Array.from({ length: 7 }, (_, i) => ({ date: dateKey(now - (todayIdx - i) * DAY, off), runs: 0, cards: 0, secured: 0 }));
   const dayOf = new Map(days.map((d) => [d.date, d]));
+  const monthStart = dateKey(now - 29 * DAY, off);
+  const month = { runs: 0, cards: 0, secured: 0 };
   for (const run of splitRuns(events, settings.runGapMin)) {
-    const d = dayOf.get(dateKey(run.start, off));
+    const key = dateKey(run.start, off);
+    const d = dayOf.get(key);
     if (d) { d.runs++; d.cards += run.cards; }
+    if (key >= monthStart) { month.runs++; month.cards += run.cards; }
   }
   for (const ts of secureTimes(active, events, retention, input.weights ?? DEFAULT_CONFIG.weights).values()) {
-    const d = dayOf.get(dateKey(ts, off));
+    const key = dateKey(ts, off);
+    const d = dayOf.get(key);
     if (d) d.secured++;
+    if (key >= monthStart) month.secured++;
   }
   const today = days[todayIdx]!;
   const sum = (f: (d: DayStat) => number) => days.reduce((n, d) => n + f(d), 0);
@@ -166,6 +174,7 @@ export function dashboard(input: DashboardInput): Dashboard {
     empty: events.length === 0,
     today,
     week: { days, todayIndex: todayIdx, runs: sum((d) => d.runs), cards: sum((d) => d.cards), secured: sum((d) => d.secured) },
+    month,
     words: { ...levels, total: active.length },
     hard: { words: hardWords, kinds: groups.filter((g) => g.kind !== 'topic').slice(0, 4), topics: groups.filter((g) => g.kind === 'topic').slice(0, 3) },
     goal: settings.goal.enabled ? { target: settings.goal.runsPerWeek, done: sum((d) => d.runs) } : null,

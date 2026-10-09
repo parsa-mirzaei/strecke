@@ -174,3 +174,29 @@ describe('settings', () => {
     expect(r.ok && r.events).toEqual([]);
   });
 });
+
+describe('dashboard on simulated logs (round 3)', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  it('empty, 3 days, 30 days, a 1-card day and a 200-card day', async () => {
+    const { syntheticLog, shapeCards } = await import('../src/sim/log.ts');
+    const { DEMO_WORDS } = await import('../src/data/demo-deck.ts');
+    const { toWordRecord } = await import('../src/record.ts');
+    const words = DEMO_WORDS.map((w) => toWordRecord(w));
+    const today = Date.parse('2026-10-07T00:00:00Z'); // a Wednesday
+    const d = (shape: 'empty' | '3d' | '30d' | 'spiky') => dashboard({ words, events: syntheticLog(words, shapeCards(shape), today), now: today + 20 * 3_600_000, tzOffsetMin: 0 });
+
+    expect(d('empty').empty).toBe(true);
+    const three = d('3d');
+    expect(three.week.days.map((x) => x.cards)).toEqual([6, 12, 4, 0, 0, 0, 0]);
+    expect(three.today.cards).toBe(4);
+    const month = d('30d');
+    expect(month.month.cards).toBe(shapeCards('30d').reduce((a, b) => a + b, 0));
+    expect(month.month.runs).toBeGreaterThan(month.week.runs);
+    const sunday = Date.parse('2026-10-11T00:00:00Z');
+    const spiky = dashboard({ words, events: syntheticLog(words, shapeCards('spiky'), sunday), now: sunday + 20 * 3_600_000, tzOffsetMin: 0 });
+    expect(spiky.week.days.map((x) => x.cards)).toEqual([6, 1, 0, 200, 12, 6, 30]);
+    expect(spiky.week.days[1]!.runs).toBe(1);
+    expect(spiky.week.days[3]!.runs).toBe(34);
+    expect(spiky.month.cards).toBe(255);
+  });
+});

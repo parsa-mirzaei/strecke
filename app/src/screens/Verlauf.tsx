@@ -10,6 +10,7 @@ const KIND_NAME: Record<string, string> = {
   sentence: 'Wörter im Satz', recall: 'Neue Wörter merken',
 };
 const MAX_SQUARES = 8;
+const MONTH = 'Letzte 30 Tage';
 
 const label = (h: HardItem) => (h.kind === 'topic' ? DOMAIN_LABEL[h.label] ?? h.label : h.kind === 'word' ? h.label : KIND_NAME[h.kind] ?? h.label);
 
@@ -31,6 +32,8 @@ export function Verlauf({ ctx, onBack, onPractice }: { ctx: Ctx; onBack: () => v
   const d = dashboard({ words: ctx.words, events: ctx.events, settings: ctx.settings, now: Date.now(), retention: ctx.config.retention });
   const total = Math.max(1, d.words.total);
   const pct = (n: number) => `${(n / total) * 100}%`;
+  const maxRuns = Math.max(1, ...d.week.days.map((x) => x.runs));
+  const squares = maxRuns <= MAX_SQUARES;
   const anyHard = d.hard.words.length + d.hard.kinds.length + d.hard.topics.length > 0;
 
   return (
@@ -63,14 +66,19 @@ export function Verlauf({ ctx, onBack, onPractice }: { ctx: Ctx; onBack: () => v
           <div class="chart" role="img" aria-label={`Runden pro Tag: ${d.week.days.map((x, k) => `${DAYS_LONG[k]} ${x.runs}`).join(', ')}`}>
             {d.week.days.map((x, k) => (
               <div key={x.date} class={`day${k === d.week.todayIndex ? ' today' : ''}`}>
-                <div class="stackbars">
-                  {Array.from({ length: Math.min(x.runs, MAX_SQUARES) }, (_, j) => <i key={j} />)}
-                  {x.runs > MAX_SQUARES ? <em>+{x.runs - MAX_SQUARES}</em> : null}
-                </div>
+                {squares ? (
+                  <div class="stackbars">{Array.from({ length: x.runs }, (_, j) => <i key={j} />)}</div>
+                ) : (
+                  <div class="bar">
+                    {x.runs ? <em>{x.runs}</em> : null}
+                    <i style={{ height: `${Math.max(x.runs ? 4 : 0, (x.runs / maxRuns) * 104)}px` }} />
+                  </div>
+                )}
                 <span>{DAYS[k]}</span>
               </div>
             ))}
           </div>
+          {!squares ? <p class="note">Ein Kästchen pro Runde passt nicht mehr: die Säulen zeigen die Zahl der Runden.</p> : null}
           <dl class="stats">
             <div><dt>Runden</dt><dd>{d.week.runs}</dd></div>
             <div><dt>Karten</dt><dd>{d.week.cards}</dd></div>
@@ -83,6 +91,17 @@ export function Verlauf({ ctx, onBack, onPractice }: { ctx: Ctx; onBack: () => v
             </div>
           ) : null}
         </section>
+
+        {d.month.runs > d.week.runs ? (
+          <section aria-labelledby="h-month">
+            <h2 class="sec-title" id="h-month">{MONTH}</h2>
+            <dl class="stats" style={{ marginTop: '10px' }}>
+              <div><dt>Runden</dt><dd>{d.month.runs}</dd></div>
+              <div><dt>Karten</dt><dd>{d.month.cards}</dd></div>
+              <div class="sec"><dt>Wörter sicherer</dt><dd>{d.month.secured}</dd></div>
+            </dl>
+          </section>
+        ) : null}
 
         <section aria-labelledby="h-words">
           <h2 class="sec-title" id="h-words">Deine Wörter</h2>

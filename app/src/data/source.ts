@@ -63,5 +63,13 @@ export async function openSource(store: KeyValueStore, settings: Settings): Prom
       return { adapter, source: null };
     }
   }
-  return { adapter: new DemoAdapter(store), source: null };
+  const demo = new DemoAdapter(store);
+  // Development: `?log=3d|30d|spiky` fills the demo deck with a simulated history (Verlauf checks).
+  if (import.meta.env.DEV && q.has('log') && !(await demo.load()).events.length) {
+    const { syntheticLog, shapeCards } = await import('@core/sim/log.ts');
+    const words = (await demo.load()).words;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    await demo.appendEvents(syntheticLog(words, shapeCards(q.get('log') as 'empty' | '3d' | '30d' | 'spiky'), today.getTime()));
+  }
+  return { adapter: demo, source: null };
 }
