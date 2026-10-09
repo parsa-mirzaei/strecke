@@ -10,10 +10,11 @@ import { applyAppearance, loadSettings } from './state/settings';
 // Open straight into the first card, rendered from the device (IndexedDB); nothing waits on a network.
 (async () => {
   const store = await openStore();
-  const [adapter, settings] = await Promise.all([openSource(store), loadSettings(store)]);
+  const settings = await loadSettings(store);
   applyAppearance(settings);
+  const { adapter, source } = await openSource(store, settings);
   const snapshot = await adapter.load();
-  render(<App adapter={adapter} store={store} snapshot={snapshot} settings={settings} />, document.getElementById('app')!);
+  render(<App adapter={adapter} store={store} snapshot={snapshot} settings={settings} source={source} />, document.getElementById('app')!);
 })().catch((err) => {
   console.error(err);
   document.getElementById('app')!.textContent = 'Strecke konnte nicht starten. Bitte neu laden.';

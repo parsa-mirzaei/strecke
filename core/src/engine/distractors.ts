@@ -103,14 +103,20 @@ export function meaningDistractors(q: Pool, n = 2): string[] | null {
   return take([...own, ...rank(q, answer, cands).map((c) => c.value)], answer, n);
 }
 
+const knownCache = new WeakMap<readonly WordRecord[], Set<string>>();
 /** Everything the sheet says in German, folded: used to spot a candidate that already forms a known phrase. */
-function knownGerman(all: readonly WordRecord[]): string[] {
-  const out: string[] = [];
-  for (const o of all) {
-    for (const e of o.examples) out.push(fold(e.de));
-    if (o.collocation) out.push(fold(o.collocation));
+function knownGerman(all: readonly WordRecord[]): { includes(s: string): boolean } {
+  let set = knownCache.get(all);
+  if (!set) {
+    set = new Set<string>();
+    for (const o of all) {
+      for (const e of o.examples) set.add(fold(e.de));
+      if (o.collocation) set.add(fold(o.collocation));
+    }
+    knownCache.set(all, set);
   }
-  return out;
+  const s = set;
+  return { includes: (x: string) => s.has(x) };
 }
 
 /**

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DataAdapter, KeyValueStore, Snapshot } from '@core/data/adapter.ts';
+import { SheetAdapter, type TableSource } from '@core/data/sheet.ts';
 import { composeRun } from '@core/engine/run.ts';
 import { dashboard } from '@core/engine/stats.ts';
 import { parseSettings, type Settings } from '@core/engine/settings.ts';
@@ -20,7 +21,7 @@ import { forcedCards } from './dev';
  * The app shell. It opens straight into the first card of a run: nothing to choose, no count, no
  * start screen. Between runs: the summary, or the calm end. Verlauf and Einstellungen sit one tap away.
  */
-export function App({ adapter, store, snapshot, settings: initial }: { adapter: DataAdapter; store: KeyValueStore; snapshot: Snapshot; settings: Settings }) {
+export function App({ adapter, store, snapshot, settings: initial, source = null }: { adapter: DataAdapter; store: KeyValueStore; snapshot: Snapshot; settings: Settings; source?: TableSource | null }) {
   const [, bump] = useState(0);
   const data = useRef({ ...snapshot, eventIds: new Set(snapshot.events.map((e) => e.id)), events: [...snapshot.events], settings: initial });
   const rerender = () => bump((n) => n + 1);
@@ -53,7 +54,20 @@ export function App({ adapter, store, snapshot, settings: initial }: { adapter: 
       data.current = { ...fresh, eventIds: new Set(fresh.events.map((e) => e.id)), events: [...fresh.events], settings: data.current.settings };
       rerender();
     },
-  }), [adapter, store]);
+    get sourceInfo() { return data.current.source; },
+    source,
+    async sync(from?: TableSource) {
+      const src = from ?? source;
+      if (!src || !(adapter instanceof SheetAdapter)) return { ok: false, error: 'no_sheet' };
+      const res = await adapter.sync(src);
+      await ctx.reload();
+      return res;
+    },
+  }), [adapter, store, source]);
+
+  // Background sync on open: practice starts from the device's copy; new or edited rows arrive quietly
+  // and are used from the next run on.
+  useEffect(() => { if (source) void ctx.sync(); }, []);
 
   setAudioSettings(ctx.settings.audio);
   setHaptics(ctx.settings.haptics);

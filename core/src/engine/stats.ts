@@ -5,7 +5,7 @@
  */
 import { capabilities, type ExerciseType } from '../exercises.ts';
 import type { WordRecord } from '../record.ts';
-import { initialState, ratingFor, replay, sortEvents, step, DEFAULT_CONFIG, type LearnEvent, type WordState } from '../scheduler.ts';
+import { initialState, ratingFor, replay, sortEvents, step, DEFAULT_CONFIG, type GradeWeights, type LearnEvent, type WordState } from '../scheduler.ts';
 import { splitRuns } from './runs.ts';
 import { DEFAULT_SETTINGS, type Settings } from './settings.ts';
 
@@ -57,6 +57,7 @@ export interface DashboardInput {
   settings?: Pick<Settings, 'runGapMin' | 'goal'>;
   now: number;
   retention?: number;
+  weights?: GradeWeights;
   /** Minutes east of UTC; defaults to the device's. Tests pass 0 for determinism. */
   tzOffsetMin?: number;
 }
@@ -72,7 +73,7 @@ const dateKey = (ts: number, off: number) => {
 const weekday = (ts: number, off: number) => (new Date(ts + off * 60_000).getUTCDay() + 6) % 7;
 
 /** When each word first reached the secure line, by replaying the log one event at a time. */
-export function secureTimes(words: readonly WordRecord[], events: readonly LearnEvent[], retention: number): Map<string, number> {
+export function secureTimes(words: readonly WordRecord[], events: readonly LearnEvent[], retention: number, weights: GradeWeights | undefined = DEFAULT_CONFIG.weights): Map<string, number> {
   const byId = new Map(words.map((w) => [w.id, w]));
   const caps = new Map(words.map((w) => [w.id, capabilities(w)]));
   const states = new Map(words.map((w) => [w.id, initialState(w)]));
@@ -83,7 +84,7 @@ export function secureTimes(words: readonly WordRecord[], events: readonly Learn
     seen.add(e.id);
     const st = states.get(e.wordId);
     if (!st || !byId.has(e.wordId)) continue;
-    const next = step(st, e, caps.get(e.wordId)!, retention);
+    const next = step(st, e, caps.get(e.wordId)!, retention, weights);
     states.set(e.wordId, next);
     if (!out.has(e.wordId) && levelOf(next) === 'secure') out.set(e.wordId, e.ts);
   }
@@ -115,7 +116,7 @@ export function dashboard(input: DashboardInput): Dashboard {
     const d = dayOf.get(dateKey(run.start, off));
     if (d) { d.runs++; d.cards += run.cards; }
   }
-  for (const ts of secureTimes(active, events, retention).values()) {
+  for (const ts of secureTimes(active, events, retention, input.weights ?? DEFAULT_CONFIG.weights).values()) {
     const d = dayOf.get(dateKey(ts, off));
     if (d) d.secured++;
   }
@@ -123,7 +124,7 @@ export function dashboard(input: DashboardInput): Dashboard {
   const sum = (f: (d: DayStat) => number) => days.reduce((n, d) => n + f(d), 0);
 
   // Where each word stands now.
-  const states = replay(active, events, retention);
+  const states = replay(active, events, retention, input.weights ?? DEFAULT_CONFIG.weights);
   const levels = { new: 0, learning: 0, secure: 0 };
   for (const w of active) levels[levelOf(states.get(w.id))]++;
 

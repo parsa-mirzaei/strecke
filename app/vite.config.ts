@@ -21,7 +21,7 @@ function csp(): Plugin {
     "img-src 'self' data:",
     "media-src 'self' blob: data:",
     "font-src 'self'",
-    "connect-src 'self' https://api.elevenlabs.io https://script.google.com https://script.googleusercontent.com",
+    "connect-src 'self' https://docs.google.com https://*.googleusercontent.com https://api.elevenlabs.io https://script.google.com",
     "worker-src 'self'",
     "manifest-src 'self'",
     "base-uri 'self'",

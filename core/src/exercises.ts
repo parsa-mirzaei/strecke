@@ -93,10 +93,20 @@ function usableExample(w: WordRecord, i: number): Example | null {
 export function capabilities(w: WordRecord): Set<ExerciseType> {
   const caps = new Set<ExerciseType>(['karte', 'bedeutung', 'hoeren']);
   if (w.pos === 'noun' && w.article) caps.add('artikel');
-  if (usableExample(w, 0)) { caps.add('luecke'); caps.add('tippen'); }
+  const ex0 = usableExample(w, 0), ex1 = usableExample(w, 1);
+  if (ex0) { caps.add('tippen'); if (!utteranceGap(w, ex0)) caps.add('luecke'); }
   if (w.prep) caps.add('praeposition');
-  if (usableExample(w, 1)) caps.add('kontext2');
+  if (ex1 && !utteranceGap(w, ex1)) caps.add('kontext2');
   return caps;
+}
+
+/**
+ * A chunk whose blank is a whole utterance (three words or more) cannot be a choice: in a dialogue
+ * almost any other chunk could fill it ("Also morgen um neun? ___"). The ambiguity guard drops it;
+ * typing the chunk (Tippen) stays, because there the learner's own words are compared with the answer.
+ */
+export function utteranceGap(w: WordRecord, e: Example): boolean {
+  return w.pos === 'phrase' && clean(e.form).split(' ').length >= 3;
 }
 
 export interface ExerciseOptions {
@@ -155,7 +165,7 @@ export function exercisesFor(w: WordRecord, all: readonly WordRecord[], opts: Ex
   const meanings = distract((n) => meaningDistractors(pool('bedeutung'), n));
   if (meanings) out.push({ ...base, type: 'bedeutung', answer: w.en, options: order('bedeutung', w.en, meanings) });
 
-  if (ex0) {
+  if (ex0 && !utteranceGap(w, ex0)) {
     const gapped = blank(ex0.de, ex0.form);
     const d = distract((n) => formDistractors(pool('luecke'), ex0.form, gapped, (o) => o.examples[0]?.form || o.de, n));
     if (d) out.push({ ...base, type: 'luecke', answer: ex0.form, options: order('luecke', ex0.form, d), gapped });
@@ -203,7 +213,7 @@ export function exercisesFor(w: WordRecord, all: readonly WordRecord[], opts: Ex
     }
   }
 
-  if (ex1) {
+  if (ex1 && !utteranceGap(w, ex1)) {
     const gapped = blank(ex1.de, ex1.form);
     const d = distract((n) => formDistractors(pool('kontext2'), ex1.form, gapped, (o) => o.examples[1]?.form || o.examples[0]?.form || o.de, n));
     if (d) {

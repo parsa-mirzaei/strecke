@@ -51,13 +51,21 @@ export interface WordState {
   lastType: ExerciseType | null;
 }
 
+/** Per exercise type: how far a review moves the memory state (1 = plain FSRS). See ENGINE.md "Weighted grades". */
+export type GradeWeights = Partial<Record<ExerciseType, number>>;
+
 export interface EngineConfig {
   newPerDay: number;
   backlogPause: number;
   retention: number;
+  /** Weighted grades; absent = plain FSRS for every type. */
+  weights?: GradeWeights;
+  /** How a run picks the exercise for a word: the stage ladder (Phase B) or per word × type evidence (round 3). */
+  selector?: 'ladder' | 'stats';
 }
 
-export const DEFAULT_CONFIG: EngineConfig = { newPerDay: 5, backlogPause: 40, retention: 0.9 };
+/** Round 3 choice (ENGINE.md "Choosing the scheduler"): one memory state per word, exercise by evidence, plain grades. */
+export const DEFAULT_CONFIG: EngineConfig = { newPerDay: 5, backlogPause: 40, retention: 0.9, selector: 'stats' };
 
 /** Above this, a right answer is rated "hard". Tuned later from the logged `ms`. */
 export const SLOW_MS: Record<ExerciseType, number> = {
@@ -100,7 +108,18 @@ export function initialState(w: WordRecord): WordState {
 }
 
 /** One event applied to one word's state. Pure. */
-export function step(state: WordState, e: LearnEvent, caps: ReadonlySet<ExerciseType>, retention: number): WordState {
+/**
+ * Weighted grades: a success moves stability `w` of the way from the old value to the plain FSRS result
+ * (w < 1 for recognition, > 1 for production); a miss in a production format is half a lapse, because the
+ * word may still be recognised. Difficulty is updated as plain FSRS.
+ */
+export function weighted(prev: Memory, next: Memory, w: number, success: boolean): Memory {
+  if (w === 1) return next;
+  const s = success ? prev.stability + w * (next.stability - prev.stability) : w > 1 ? prev.stability + 0.5 * (next.stability - prev.stability) : next.stability;
+  return { stability: Math.max(0.01, s), difficulty: next.difficulty };
+}
+
+export function step(state: WordState, e: LearnEvent, caps: ReadonlySet<ExerciseType>, retention: number, weights?: GradeWeights): WordState {
   const s: WordState = { ...state, lastSeen: e.ts, firstSeen: state.firstSeen ?? e.ts, introduced: true };
   if (e.kind === 'seen') {
     if (s.stage === 0) s.stage = 1;
@@ -124,9 +143,12 @@ export function step(state: WordState, e: LearnEvent, caps: ReadonlySet<Exercise
     s.streak = 0;
     if (stage >= 2) s.lapses = state.lapses + 1;
   }
-  s.memory = state.memory && state.lastReview !== null
-    ? review(state.memory, (e.ts - state.lastReview) / DAY, g)
-    : initMemory(g);
+  if (state.memory && state.lastReview !== null) {
+    const plain = review(state.memory, (e.ts - state.lastReview) / DAY, g);
+    s.memory = weights ? weighted(state.memory, plain, weights[e.exercise] ?? 1, g > 1) : plain;
+  } else {
+    s.memory = initMemory(g);
+  }
   s.lastReview = e.ts;
   s.due = e.ts + Math.round(interval(s.memory.stability, retention) * DAY);
   s.reps = state.reps + 1;
@@ -139,7 +161,7 @@ export function sortEvents(events: readonly LearnEvent[]): LearnEvent[] {
 }
 
 /** Replay the whole log. Events for unknown words are ignored; duplicate event ids count once. */
-export function replay(words: readonly WordRecord[], events: readonly LearnEvent[], retention = DEFAULT_CONFIG.retention): Map<string, WordState> {
+export function replay(words: readonly WordRecord[], events: readonly LearnEvent[], retention = DEFAULT_CONFIG.retention, weights: GradeWeights | undefined = DEFAULT_CONFIG.weights): Map<string, WordState> {
   const states = new Map(words.map((w) => [w.id, initialState(w)]));
   const caps = new Map(words.map((w) => [w.id, capabilities(w)]));
   const seen = new Set<string>();
@@ -148,7 +170,7 @@ export function replay(words: readonly WordRecord[], events: readonly LearnEvent
     seen.add(e.id);
     const st = states.get(e.wordId);
     if (!st) continue;
-    states.set(e.wordId, step(st, e, caps.get(e.wordId)!, retention));
+    states.set(e.wordId, step(st, e, caps.get(e.wordId)!, retention, weights));
   }
   return states;
 }

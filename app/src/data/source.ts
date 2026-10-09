@@ -1,31 +1,67 @@
 import type { DataAdapter, KeyValueStore } from '@core/data/adapter.ts';
 import { DemoAdapter } from '@core/data/demo.ts';
-import { LocalAdapter } from '@core/data/local.ts';
+import { SheetAdapter, type TableSource } from '@core/data/sheet.ts';
+import { parseCsv } from '@core/csv.ts';
+import type { Settings } from '@core/engine/settings.ts';
 import { clearStore } from './idb';
 
 export const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n));
 
+/** A Google Sheet published to the web as CSV (read-only). No credentials are sent. */
+export function csvUrlSource(url: string): TableSource {
+  return {
+    label: 'Google Sheet (CSV)',
+    async read() {
+      const res = await fetch(url, { cache: 'no-store', credentials: 'omit', redirect: 'follow' });
+      if (!res.ok) throw new Error(`http_${res.status}`);
+      const text = await res.text();
+      if (/^\s*<(!doctype|html)/i.test(text)) throw new Error('not_csv');
+      return parseCsv(text);
+    },
+  };
+}
+
+/** A CSV file the learner picks (a one-off import, also offline). */
+export function csvTextSource(text: string, label = 'CSV-Datei'): TableSource {
+  return { label, read: async () => parseCsv(text) };
+}
+
+export interface Opened {
+  adapter: DataAdapter;
+  /** Where a background sync reads from; null for demo. */
+  source: TableSource | null;
+}
+
 /**
- * Which data the app runs on (DECISIONS D46). The UI never asks which one it got.
- *  - Development, with the gitignored seed served by the dev server: `local`, seeded once.
- *  - Everything else (the public build, or no seed file): `demo`, the bundled synthetic deck.
- * The `sheet` adapter joins in Phase E.
+ * Which data the app runs on (D46). The UI never asks which one it got.
+ *  - A sheet link in the settings: `sheet`, from the last good copy on the device, refreshed in the background.
+ *  - Development: `?sheet=stress|stress3|stress500` (committed synthetic fixtures), or the gitignored seed
+ *    through the same ingestion as a real sheet; `?demo` forces the demo deck.
+ *  - Otherwise: `demo`, the bundled synthetic deck.
  */
-export async function openSource(store: KeyValueStore): Promise<DataAdapter> {
-  if (import.meta.env.DEV && new URLSearchParams(location.search).has('reset')) {
+export async function openSource(store: KeyValueStore, settings: Settings): Promise<Opened> {
+  const q = new URLSearchParams(location.search);
+  if (import.meta.env.DEV && q.has('reset')) {
     await clearStore();
     history.replaceState(null, '', location.pathname);
   }
-  if (import.meta.env.DEV && !new URLSearchParams(location.search).has('demo')) {
-    const local = new LocalAdapter({ store, now: Date.now, randomBytes, device: 'dev' });
-    if ((await local.core()).words.length > 0) return local;
-    try {
-      const res = await fetch('/__dev/seed.csv', { cache: 'no-store' });
-      if (res.ok) {
-        await local.importCsv(await res.text());
-        return local;
-      }
-    } catch { /* no seed: fall through to the demo deck */ }
+  if (import.meta.env.DEV && q.has('sheet')) {
+    const which = q.get('sheet')!;
+    const { stressTable, tinyTable, bigTable } = await import('@core/data/stress-sheet.ts');
+    const table = which === 'stress3' ? tinyTable() : which === 'stress500' ? bigTable(500) : stressTable();
+    const adapter = new SheetAdapter(store, Date.now, `dev-${which}`);
+    await adapter.sync({ label: which, read: async () => table });
+    return { adapter, source: null };
   }
-  return new DemoAdapter(store);
+  if (settings.sheet.csvUrl) return { adapter: new SheetAdapter(store), source: csvUrlSource(settings.sheet.csvUrl) };
+  if (import.meta.env.DEV && !q.has('demo')) {
+    const res = await fetch('/__dev/seed.csv', { cache: 'no-store' }).catch(() => null);
+    if (res?.ok) {
+      const adapter = new SheetAdapter(store, Date.now, 'dev-seed');
+      const text = await res.text();
+      await adapter.sync(csvTextSource(text, 'seed'));
+      return { adapter, source: null };
+    }
+  }
+  return { adapter: new DemoAdapter(store), source: null };
 }

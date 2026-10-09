@@ -14,6 +14,18 @@ export interface Snapshot {
   suspended: WordRecord[];
   events: LearnEvent[];
   config: EngineConfig;
+  /** Only for the `sheet` adapter: what the last sync found. */
+  source?: SourceInfo;
+}
+
+export interface SourceInfo {
+  lastSync: number | null;
+  lastAttempt: number | null;
+  lastError: string | null;
+  issues: Array<{ line: number; de: string; notes: string[]; skipped: boolean }>;
+  duplicates: Array<{ line: number; de: string; firstLine: number }>;
+  unknownColumns: string[];
+  archived: number;
 }
 
 export type WordStatusChange = 'active' | 'rejected' | 'suspended';

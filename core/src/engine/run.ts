@@ -14,7 +14,7 @@ import {
   DEFAULT_CONFIG, gateTypes, initialState, recallNow, replay, type EngineConfig, type LearnEvent, type WordState,
 } from '../scheduler.ts';
 import { buildConfusions } from './distractors.ts';
-import { rng } from './rng.ts';
+import { hash, rng } from './rng.ts';
 import { DEFAULT_SETTINGS, isEnabled, type Settings } from './settings.ts';
 
 export type CardReason = 'new' | 'due' | 'practice' | 'focus';
@@ -97,6 +97,65 @@ export function chooseForRun(
   return null;
 }
 
+// ---------------------------------------------------------------- per word × type evidence (round 3)
+
+/** Recent answers of one word in one exercise type, newest last (1 = right, 0 = wrong). */
+export type TypeStats = Map<string, Map<ExerciseType, number[]>>;
+
+const RECENT = 4;
+
+export function typeStats(events: readonly LearnEvent[]): TypeStats {
+  const out: TypeStats = new Map();
+  for (const e of [...events].sort((a, b) => a.ts - b.ts)) {
+    if (e.kind !== 'review') continue;
+    const m = out.get(e.wordId) ?? new Map<ExerciseType, number[]>();
+    const xs = m.get(e.exercise) ?? [];
+    xs.push(e.correct && !e.dontKnow && (e.rating ?? 3) > 1 ? 1 : 0);
+    if (xs.length > RECENT) xs.shift();
+    m.set(e.exercise, xs);
+    out.set(e.wordId, m);
+  }
+  return out;
+}
+
+/** Effort levels for the evidence ladder: 0 look, 1 recognise, 2 use in context, 3 produce. */
+export const LEVEL: Record<ExerciseType, number> = {
+  karte: 0, bedeutung: 1, artikel: 1, plural: 1, luecke: 2, praeposition: 2, kollokation: 2, hoeren: 2, kontext2: 3, reihenfolge: 3, tippen: 3,
+};
+
+/**
+ * Which exercise, from evidence: a word climbs to the next level once its recent answers one level down
+ * are mostly right (at least 60 %, at least one), falls back below a level it just missed, and is held at
+ * recognition while its predicted recall is low. Within a level, the least-practised type comes first, so
+ * the word meets every format the row supports. The type just shown in the run and the word's own last
+ * type are avoided when another fits.
+ */
+export function chooseByStats(
+  st: WordState, exs: readonly Exercise[], stats: ReadonlyMap<ExerciseType, number[]> | undefined, prev: ExerciseType | null,
+  recall: number, canListen: boolean, tie: (t: ExerciseType) => number,
+): Exercise | null {
+  const pool = exs.filter((x) => canListen || !NEEDS_VOICE.has(x.type));
+  if (!pool.length) return null;
+  const karte = pool.find((x) => x.type === 'karte') ?? null;
+  if (!st.introduced) return karte;
+  const answers = (lvl: number) => pool.filter((x) => LEVEL[x.type] === lvl).flatMap((x) => stats?.get(x.type) ?? []);
+  const ready = (lvl: number) => { const a = answers(lvl); return a.length > 0 && a.reduce((s, v) => s + v, 0) / a.length >= 0.6; };
+  const last = st.lastType;
+  const lastMiss = last !== null && (stats?.get(last)?.at(-1) ?? 1) === 0;
+  let level = 1;
+  while (level < 3 && ready(level) && pool.some((x) => LEVEL[x.type] === level + 1)) level++;
+  if (lastMiss && last) level = Math.min(level, Math.max(1, LEVEL[last] - 1));
+  if (recall < 0.5) level = Math.min(level, 1);
+  if (st.memory === null && st.lastType === 'karte' && (stats?.get('karte')?.at(-1) ?? 1) === 0) return karte; // "Nicht gewusst" on a new word
+  for (let l = level; l >= 1; l--) {
+    const atL = pool.filter((x) => LEVEL[x.type] === l);
+    if (!atL.length) continue;
+    const order = [...atL].sort((a, b) => (stats?.get(a.type)?.length ?? 0) - (stats?.get(b.type)?.length ?? 0) || tie(a.type) - tie(b.type));
+    return order.find((x) => x.type !== prev && x.type !== last) ?? order.find((x) => x.type !== prev) ?? order[0]!;
+  }
+  return karte;
+}
+
 /** Positions for `k` new cards among `n`, spread evenly and never first when something else can open the run. */
 function newSlots(n: number, k: number, canStartWithNew: boolean): Set<number> {
   const out = new Set<number>();
@@ -133,15 +192,25 @@ export function composeRun(input: ComposeInput): RunCard[] {
   const active = input.words.filter((w) => w.status === 'active');
   if (!active.length) return [];
 
-  const states = replay(active, input.events, config.retention);
+  const states = replay(active, input.events, config.retention, config.weights);
   const st = (w: WordRecord) => states.get(w.id) ?? initialState(w);
   const confusions = buildConfusions(input.events);
-  const exMap = new Map(active.map((w) => [
-    w.id,
-    exercisesFor(w, active, { extended: true, confusions, seed: input.seed, fewerOptions: true }).filter((x) => isEnabled(settings, x.type)),
-  ]));
-
-  const playable = (w: WordRecord) => (exMap.get(w.id) ?? []).length > 0;
+  const stats = config.selector === 'stats' ? typeStats(input.events) : new Map();
+  // Exercises are generated only for words that end up in the run (a 500-row sheet stays fast).
+  const exCache = new Map<string, Exercise[]>();
+  const exMap = {
+    get(id: string): Exercise[] {
+      let xs = exCache.get(id);
+      if (!xs) {
+        const w = active.find((x) => x.id === id)!;
+        xs = exercisesFor(w, active, { extended: true, confusions, seed: input.seed, fewerOptions: true }).filter((x) => isEnabled(settings, x.type));
+        exCache.set(id, xs);
+      }
+      return xs;
+    },
+  };
+  // Every record with a German word and a meaning has at least its Karte.
+  const playable = (w: WordRecord) => !!w.de && !!w.en;
   const introduced = active.filter((w) => st(w).introduced && playable(w));
   // Jitter only breaks ties between words with the same predicted recall.
   const jitter = new Map(active.map((w) => [w.id, random()]));
@@ -156,7 +225,10 @@ export function composeRun(input: ComposeInput): RunCard[] {
   const total = Math.max(1, settings.runLength);
   const backlog = due.length >= config.backlogPause; // silent: slows new words, never shown
   const fresh = active.filter((w) => !st(w).introduced && playable(w));
-  const newQuota = focus.length || backlog ? 0 : Math.min(settings.newPerRun, fresh.length, total);
+  // Reviews first: new words only take the room that due words leave in this run. A burst of new rows in
+  // the sheet therefore trickles in, and a pile of due words pauses new ones, silently.
+  const room = Math.max(0, total - due.length);
+  const newQuota = focus.length || backlog ? 0 : Math.min(settings.newPerRun, fresh.length, room);
 
   const reviewPool = [
     ...focus.map((w) => ({ w, reason: 'focus' as CardReason })),
@@ -164,8 +236,8 @@ export function composeRun(input: ComposeInput): RunCard[] {
     ...rest.filter((w) => !focusIds.has(w.id)).map((w) => ({ w, reason: 'practice' as CardReason })),
   ];
   const reviews = reviewPool.slice(0, total - newQuota);
-  // Too few words to review: more new ones, up to the run length, so a young sheet still fills a run.
-  const extraNew = focus.length || backlog ? 0 : Math.max(0, Math.min(fresh.length - newQuota, total - newQuota - reviews.length, settings.newPerRun + 1 - newQuota));
+  // Only a sheet with nothing to review yet gets one more new card, so a first run is not a single card.
+  const extraNew = !focus.length && !backlog && reviews.length === 0 && fresh.length > newQuota && total > newQuota ? 1 : 0;
   const news = pickNew(fresh, newQuota + extraNew).map((w) => ({ w, reason: 'new' as CardReason }));
 
   const n = reviews.length + news.length;
@@ -178,7 +250,9 @@ export function composeRun(input: ComposeInput): RunCard[] {
   let prev: ExerciseType | null = null;
   for (const { w, reason } of sequence) {
     const s = st(w);
-    const x = chooseForRun(w, s, exMap.get(w.id) ?? [], prev, recallNow(s, now), canListen);
+    const x: Exercise | null = config.selector === 'stats'
+      ? chooseByStats(s, exMap.get(w.id) ?? [], stats.get(w.id), prev, recallNow(s, now), canListen, (t) => hash(`${input.seed}|${w.id}|${t}`))
+      : chooseForRun(w, s, exMap.get(w.id) ?? [], prev, recallNow(s, now), canListen);
     if (!x) continue;
     cards.push({ word: w, exercise: x, reason });
     prev = x.type;

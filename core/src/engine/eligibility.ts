@@ -3,7 +3,7 @@
  * (ENGINE.md "Eligibility"). The hints are for Settings > Daten: help, not a to-do list. Nothing is
  * ever invented to fill a gap.
  */
-import { exercisesFor, EXERCISE_TYPES, type ExerciseType } from '../exercises.ts';
+import { capabilities, exercisesFor, EXERCISE_TYPES, pluralUsable, REORDER_WORDS, type ExerciseType } from '../exercises.ts';
 import { collocationSplit } from './distractors.ts';
 import type { WordRecord } from '../record.ts';
 
@@ -28,8 +28,24 @@ export function eligibleTypes(w: WordRecord, all: readonly WordRecord[]): Exerci
   return EXERCISE_TYPES.filter((t) => have.has(t));
 }
 
-export function rowEligibility(w: WordRecord, all: readonly WordRecord[]): RowEligibility {
-  const available = eligibleTypes(w, all);
+/**
+ * Types from the columns alone, plus a cheap neighbour count instead of building distractors: fast enough
+ * for a 500-row sheet on a phone. Used for the hints; `eligibleTypes` is the exact answer.
+ */
+export function columnTypes(w: WordRecord, samePos: number): ExerciseType[] {
+  const caps = capabilities(w);
+  const out = new Set<ExerciseType>(['karte']);
+  const choice = samePos >= 2 || w.wrong.length >= 2;
+  for (const t of caps) if (t === 'karte' || t === 'artikel' || t === 'praeposition' || t === 'tippen' || choice) out.add(t);
+  if (pluralUsable(w) && samePos >= 1) out.add('plural');
+  if (collocationSplit(w)) out.add('kollokation');
+  const ex = w.examples[0];
+  if (ex && caps.has('tippen')) { const n = ex.de.split(/\s+/).length; if (n >= REORDER_WORDS[0] && n <= REORDER_WORDS[1]) out.add('reihenfolge'); }
+  return EXERCISE_TYPES.filter((t) => out.has(t));
+}
+
+export function rowEligibility(w: WordRecord, all: readonly WordRecord[], samePos?: number): RowEligibility {
+  const available = samePos === undefined ? eligibleTypes(w, all) : columnTypes(w, samePos);
   const has = new Set(available);
   const hints: Hint[] = [];
   const add = (column: string, unlocks: ExerciseType[], why: string) => {
@@ -57,7 +73,9 @@ export interface ThinSummary {
 
 export function thinRows(words: readonly WordRecord[]): ThinSummary {
   const active = words.filter((w) => w.status !== 'suspended');
-  const rows = active.map((w) => rowEligibility(w, active)).filter((r) => r.hints.length);
+  const byPos = new Map<string, number>();
+  for (const w of active) byPos.set(w.pos, (byPos.get(w.pos) ?? 0) + 1);
+  const rows = active.map((w) => rowEligibility(w, active, (byPos.get(w.pos) ?? 1) - 1)).filter((r) => r.hints.length);
   const gain = (r: RowEligibility) => r.hints.reduce((n, h) => n + h.unlocks.length, 0);
   rows.sort((a, b) => gain(b) - gain(a) || (a.de < b.de ? -1 : 1));
   const cols = new Map<string, { rows: number; unlocks: Set<ExerciseType> }>();

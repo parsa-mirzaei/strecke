@@ -13,6 +13,7 @@ import { clearStore } from '../data/idb';
 import { KIND_LABEL } from '../run/parts';
 import { Icon } from '../ui/Icon';
 import { LICENCES } from './licences';
+import { SheetSection } from './SheetSection';
 
 type Page = 'uebungen' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
 
@@ -223,7 +224,6 @@ function Daten({ ctx }: { ctx: Ctx }) {
   const [msg, setMsg] = useState('');
   const [confirm, setConfirm] = useState(false);
   const thin = useMemo(() => thinRows(ctx.words), [ctx.words]);
-  const source = ctx.adapter.kind === 'demo' ? 'Demo-Wörter, nur auf diesem Gerät' : ctx.adapter.kind === 'local' ? 'Lokale Wörter (Entwicklung)' : 'Dein Google Sheet';
   const colName: Record<string, string> = {
     'example_de, example_en': 'Beispielsatz', 'example_2_de, example_2_en': 'Zweiter Beispielsatz', plural: 'Mehrzahl', collocation: 'Wortverbindung',
     prep: 'Präposition', article: 'Artikel', 'wrong_1, wrong_2': 'Falsche Antworten',
@@ -257,9 +257,7 @@ function Daten({ ctx }: { ctx: Ctx }) {
 
   return (
     <>
-      <p class="kicker">Quelle</p>
-      <Field label={source} note={`${ctx.words.length} Wörter`}><span /></Field>
-      <Field label="Letzte Synchronisierung" note="Die Anbindung an dein Google Sheet folgt in einer späteren Version. Bis dahin bleibt alles auf diesem Gerät."><span class="note">–</span></Field>
+      <SheetSection ctx={ctx} />
 
       <p class="kicker">Was deinen Wörtern fehlt</p>
       {thin.rows.length === 0 ? <p class="note">Jedes Wort hat alles, was für seine Übungen nötig ist.</p> : (
@@ -352,7 +350,7 @@ export function SettingsScreen({ ctx, onBack }: { ctx: Ctx; onBack: () => void }
   const summary: Record<Page, string> = {
     uebungen: `${s.runLength} Karten pro Runde, ${s.newPerRun} neue`,
     audio: s.audio.provider === 'device' ? 'Gerätestimme' : 'ElevenLabs',
-    daten: `${ctx.words.length} Wörter`,
+    daten: `${ctx.adapter.kind === 'sheet' ? 'Google Sheet' : 'Demo'} · ${ctx.words.length} Wörter`,
     darstellung: s.theme === 'system' ? 'Wie das Gerät' : s.theme === 'light' ? 'Hell' : 'Dunkel',
     ziele: s.goal.enabled ? `${s.goal.runsPerWeek} Runden pro Woche` : 'Aus',
     ueber: `Version ${__APP_VERSION__}`,

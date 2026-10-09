@@ -1,4 +1,6 @@
-import type { DataAdapter, KeyValueStore } from '@core/data/adapter.ts';
+import type { DataAdapter, KeyValueStore, SourceInfo } from '@core/data/adapter.ts';
+import type { TableSource } from '@core/data/sheet.ts';
+import type { IngestReport } from '@core/sheet/ingest.ts';
 import type { WordRecord } from '@core/record.ts';
 import type { EngineConfig, LearnEvent } from '@core/scheduler.ts';
 import type { Settings } from '@core/engine/settings.ts';
@@ -20,6 +22,12 @@ export interface Ctx {
   record(e: LearnEvent): void;
   /** Re-read words and events from the adapter (after import or a status change). */
   reload(): Promise<void>;
+  /** What the last sheet sync found (sheet adapter only). */
+  sourceInfo: SourceInfo | undefined;
+  /** The configured sheet, if any. */
+  source: TableSource | null;
+  /** Read the sheet now (or the given source) and reload; never throws. */
+  sync(from?: TableSource): Promise<{ ok: boolean; report?: IngestReport; error?: string }>;
 }
 
 export type Screen = 'run' | 'summary' | 'end' | 'verlauf' | 'settings';

@@ -23,6 +23,8 @@ export interface Settings {
   theme: Theme;
   haptics: boolean;
   goal: { enabled: boolean; runsPerWeek: number };
+  /** The learner's sheet, published as CSV (read-only). Empty = demo words. */
+  sheet: { csvUrl: string };
   audio: {
     provider: AudioProviderId;
     /** ElevenLabs voice and model; empty means "first suitable / provider default". */
@@ -45,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
   haptics: true,
   goal: { enabled: false, runsPerWeek: 5 },
+  sheet: { csvUrl: '' },
   audio: { provider: 'device', voiceId: '', modelId: '', prefetch: false, dailyCharCap: 2000, cacheMaxMB: 50 },
 };
 
@@ -72,6 +75,7 @@ export function parseSettings(raw: unknown): Settings {
   const r = isObj(raw) ? raw : {};
   const d = DEFAULT_SETTINGS;
   const audio = isObj(r.audio) ? r.audio : {};
+  const sheet = isObj(r.sheet) ? r.sheet : {};
   const goal = isObj(r.goal) ? r.goal : {};
   const disabled = Array.isArray(r.disabled)
     ? [...new Set(r.disabled.filter((t): t is ExerciseType => (EXERCISE_TYPES as readonly string[]).includes(t as string) && t !== 'karte'))]
@@ -89,6 +93,7 @@ export function parseSettings(raw: unknown): Settings {
       enabled: goal.enabled === true,
       runsPerWeek: int(goal.runsPerWeek, LIMITS.runsPerWeek, d.goal.runsPerWeek),
     },
+    sheet: { csvUrl: sheetUrl(sheet.csvUrl) },
     audio: {
       provider: oneOf(AUDIO_PROVIDERS, audio.provider, d.audio.provider),
       voiceId: str(audio.voiceId, 64).replace(/[^A-Za-z0-9_-]/g, ''),
@@ -98,6 +103,20 @@ export function parseSettings(raw: unknown): Settings {
       cacheMaxMB: int(audio.cacheMaxMB, LIMITS.cacheMaxMB, d.audio.cacheMaxMB),
     },
   };
+}
+
+/**
+ * A sheet link the app will read: only a Google Sheets "publish to web" CSV link (https, docs.google.com,
+ * a /pub path, output=csv). Anything else is refused, so the app never fetches from an unexpected host.
+ */
+export function sheetUrl(v: unknown): string {
+  if (typeof v !== 'string') return '';
+  let u: URL;
+  try { u = new URL(v.trim()); } catch { return ''; }
+  if (u.protocol !== 'https:' || u.hostname !== 'docs.google.com' || !/^\/spreadsheets\/d\/[^/]+\/(?:[^/]+\/)?pub$/.test(u.pathname) && !/^\/spreadsheets\/d\/e\/[A-Za-z0-9_-]+\/pub$/.test(u.pathname)) return '';
+  if (u.searchParams.get('output') !== 'csv') return '';
+  u.hash = '';
+  return u.toString();
 }
 
 export const isEnabled = (s: Pick<Settings, 'disabled'>, t: ExerciseType) => t === 'karte' || !s.disabled.includes(t);

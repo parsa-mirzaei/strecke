@@ -29,8 +29,8 @@ describe('what the code may talk to (A9)', () => {
       return statSync(p).isDirectory() ? files(p) : /\.(ts|tsx)$/.test(f) && !/\.test\./.test(f) ? [p] : [];
     });
   }
-  it('the only external hosts in the source are the audio provider and the licence links', () => {
-    const allowed = [/api\.elevenlabs\.io/, /elevenlabs\.io\/(pricing|terms|docs)/, /github\.com/, /^https?:\/\/www\.w3\.org/];
+  it('the only external hosts in the source are the sheet, the audio provider and the licence links', () => {
+    const allowed = [/^https:\/\/docs\.google\.com\/spreadsheets\//, /api\.elevenlabs\.io/, /elevenlabs\.io\/(pricing|terms|docs)/, /github\.com/, /^https?:\/\/www\.w3\.org/];
     for (const p of files(join(__dirname, '..'))) {
       for (const m of readFileSync(p, 'utf8').matchAll(/https?:\/\/[^\s'"`)]+/g)) {
         expect(allowed.some((a) => a.test(m[0])), `${p}: ${m[0]}`).toBe(true);

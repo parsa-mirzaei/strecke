@@ -180,6 +180,15 @@ describe('distractor rules', () => {
     expect(type(x, 'tippen')!.answer).toBe('Krankenkassenbeitrag');
     expect(type(x, 'reihenfolge')!.tokens).toContain('Krankenkassenbeitrag');
   });
+  it('ambiguity guard: a chunk whose blank is a whole utterance gets no choice cloze, but can still be typed', () => {
+    const a = rec({ de: 'Habe ich das richtig verstanden?', en: 'Did I get that right?', pos: 'phrase', tier: 'chunk', example_de: 'Also morgen um neun? Habe ich das richtig verstanden?', example_en: 'So tomorrow at nine? Did I get that right?' });
+    const b = rec({ de: 'Vielleicht, mal sehen.', en: "Maybe, we'll see.", pos: 'phrase', tier: 'chunk', example_de: 'Kommst du? Vielleicht, mal sehen.', example_en: "Are you coming? Maybe, we'll see." });
+    const c = rec({ de: 'Wie bitte?', en: 'Pardon?', pos: 'phrase', tier: 'chunk', example_de: 'Wie bitte? Das habe ich nicht gehört.', example_en: "Pardon? I didn't hear that." });
+    const t = ext(a, [a, b, c]).map((x) => x.type);
+    expect(t).not.toContain('luecke');
+    expect(t).toContain('tippen');
+    expect(ext(c, [a, b, c]).map((x) => x.type)).toContain('tippen');
+  });
   it('Reihenfolge: a permutation of the sentence that is never the sentence', () => {
     for (const w of all) {
       const r = type(ext(w, all), 'reihenfolge');
@@ -306,7 +315,16 @@ describe('run composition', () => {
     expect(new Set(run.map((c) => c.word.id)).size).toBe(6);
     expect(run.filter((c) => c.reason === 'new').length).toBeLessThanOrEqual(DEFAULT_SETTINGS.newPerRun);
     for (let i = 1; i < run.length; i++) expect(run[i]!.exercise.type).not.toBe(run[i - 1]!.exercise.type);
-    expect(run.filter((c) => c.reason === 'new').length).toBeGreaterThan(0);
+    expect(run.filter((c) => c.reason === 'new').length).toBe(0); // ten due words fill the run: reviews first
+    const light = composeRun({ ...base, events: learned(3), now: T0 + 30 * DAY });
+    expect(light.filter((c) => c.reason === 'new').length).toBe(DEFAULT_SETTINGS.newPerRun);
+  });
+  it('a burst of new rows trickles in: never more than the cap per run, none while due words fill the run', () => {
+    const big = [...all, ...Array.from({ length: 40 }, (_, i) => rec({ de: `Neuwort${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, article: 'das', en: `newword ${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, pos: 'noun' }))];
+    const run = composeRun({ ...base, words: big, events: learned(3), now: T0 + 30 * DAY });
+    expect(run.filter((c) => c.reason === 'new').length).toBeLessThanOrEqual(DEFAULT_SETTINGS.newPerRun);
+    const full = composeRun({ ...base, words: big, events: learned(12), now: T0 + 30 * DAY });
+    expect(full.filter((c) => c.reason === 'new')).toHaveLength(0);
   });
   it('does not open with a new word when a review can open the run', () => {
     const run = composeRun({ ...base, events: learned(10), now: T0 + 30 * DAY });
