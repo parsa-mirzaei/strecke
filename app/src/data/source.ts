@@ -1,7 +1,7 @@
-import type { DataAdapter } from '@core/data/adapter.ts';
+import type { DataAdapter, KeyValueStore } from '@core/data/adapter.ts';
 import { DemoAdapter } from '@core/data/demo.ts';
 import { LocalAdapter } from '@core/data/local.ts';
-import { clearStore, openStore } from './idb';
+import { clearStore } from './idb';
 
 export const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n));
 
@@ -11,13 +11,12 @@ export const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(
  *  - Everything else (the public build, or no seed file): `demo`, the bundled synthetic deck.
  * The `sheet` adapter joins in Phase E.
  */
-export async function openSource(): Promise<DataAdapter> {
+export async function openSource(store: KeyValueStore): Promise<DataAdapter> {
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('reset')) {
     await clearStore();
     history.replaceState(null, '', location.pathname);
   }
-  const store = await openStore();
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && !new URLSearchParams(location.search).has('demo')) {
     const local = new LocalAdapter({ store, now: Date.now, randomBytes, device: 'dev' });
     if ((await local.core()).words.length > 0) return local;
     try {

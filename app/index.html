@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F4F0E6" />
-    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#13171D" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F1F4F9" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C1328" />
     <meta name="description" content="Deutsch üben, eine Karte nach der anderen." />
     <title>Strecke</title>
     <link rel="manifest" href="./manifest.webmanifest" />
@@ -13,12 +13,12 @@
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <style>
       /* First paint before the bundle, in the right scheme, so opening never flashes. */
-      html, body { margin: 0; background: #F4F0E6; }
-      @media (prefers-color-scheme: dark) { html, body { background: #13171D; } }
+      html, body { margin: 0; background: #F1F4F9; }
+      @media (prefers-color-scheme: dark) { html, body { background: #0C1328; } }
     </style>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="stage"><div id="app"></div></div>
     <noscript>Strecke braucht JavaScript.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1,0 +1,53 @@
+/*
+ * Design tokens: the one place to retune the look (round 2, design/DECISIONS.md R2-13).
+ * Colour is assigned by meaning, not decoration:
+ *   ink    = certainty          amber = what you must retrieve
+ *   mid    = got it             teal  = secure          fog = not yet
+ * No alarm colour anywhere. Starting point: the reference prototype's palette, with a few values darkened where
+ * the prototype missed WCAG AA (teal text, selected-state text, control borders). Every text and
+ * graphic pair is checked by src/styles/contrast.test.ts, so a retune that breaks contrast fails a test.
+ */
+:root {
+  --outer: #D6DCE8;
+  --ground: #F1F4F9;
+  --card: #FFFFFF;
+  --edge: #D3DAE6;
+  --line: #BFC8DA;          /* decoration only */
+  --control: #7C89A6;       /* borders of controls and empty route stops: 3:1 on ground and card */
+  --ink: #111A36;
+  --ink2: #52607E;
+  --amber: #FF8A1F;
+  --amber-edge: #D4620A;
+  --on-amber: #111A36;
+  --teal: #0A9A74;          /* fills and graphics */
+  --teal-text: #077A5C;     /* text */
+  --on-teal: #111A36;
+  --mid: #3D58E8;
+  --on-mid: #FFFFFF;
+  --fog: #C5CDDD;
+  --fog-mark: #76829C;      /* "not yet" as a mark on the route and in bars */
+  --fog-sel: #5B6784;       /* selected "Nicht gewusst" */
+  --on-fog-sel: #FFFFFF;
+  --disabled-ink: #76829C;
+  --halo: rgba(17, 26, 54, .16);
+  --f-display: 'Barlow Semi Condensed', 'Arial Narrow', Arial, sans-serif;
+  --f-body: 'Barlow', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ease: cubic-bezier(.22, .9, .28, 1.02);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --outer: #060A15; --ground: #0C1328; --card: #152042; --edge: #25335C; --line: #33447A; --control: #7683A8;
+    --ink: #F0F3FF; --ink2: #9BA8CB; --amber: #FF9A33; --amber-edge: #FFBE6B; --on-amber: #0C1328;
+    --teal: #35DBA6; --teal-text: #35DBA6; --on-teal: #0C1328; --mid: #8EA2FF; --on-mid: #0C1328;
+    --fog: #37446A; --fog-mark: #8A97BA; --fog-sel: #4A5A86; --on-fog-sel: #FFFFFF; --disabled-ink: #8A97BA;
+    --halo: rgba(240, 243, 255, .2); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --outer: #060A15; --ground: #0C1328; --card: #152042; --edge: #25335C; --line: #33447A; --control: #7683A8;
+  --ink: #F0F3FF; --ink2: #9BA8CB; --amber: #FF9A33; --amber-edge: #FFBE6B; --on-amber: #0C1328;
+  --teal: #35DBA6; --teal-text: #35DBA6; --on-teal: #0C1328; --mid: #8EA2FF; --on-mid: #0C1328;
+  --fog: #37446A; --fog-mark: #8A97BA; --fog-sel: #4A5A86; --on-fog-sel: #FFFFFF; --disabled-ink: #8A97BA;
+  --halo: rgba(240, 243, 255, .2); color-scheme: dark;
+}

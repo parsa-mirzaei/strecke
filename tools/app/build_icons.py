@@ -12,7 +12,9 @@ import pathlib
 import re
 import sys
 
-UI_ICONS = ['volume-2']  # icons the interface uses; add here when a screen needs one
+# Icons for app controls only. Words get no pictograms (round 2, design/DECISIONS.md R2-10).
+UI_ICONS = ['volume-2', 'chevron-up', 'chevron-left', 'chevron-right', 'check', 'settings', 'chart-no-axes-column', 'x', 'download', 'upload',
+            'trash', 'refresh-cw', 'info', 'play', 'key-round', 'circle-check', 'rotate-ccw']
 
 ALLOWED_TAGS = {'path', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'rect'}
 ALLOWED_ATTRS = {'d', 'cx', 'cy', 'r', 'rx', 'ry', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'width', 'height', 'points', 'fill'}
@@ -35,7 +37,7 @@ def main(pkg_dir: str) -> None:
     if meta.get('name') != 'lucide-static' or meta.get('license') != 'ISC':
         sys.exit('not the lucide-static package')
     nodes = json.loads((pkg / 'icon-nodes.json').read_text(encoding='utf-8'))
-    names = sorted(set(UI_ICONS + image_keys()))
+    names = sorted(set(UI_ICONS))
     out: dict[str, list] = {}
     for name in names:
         if name not in nodes:

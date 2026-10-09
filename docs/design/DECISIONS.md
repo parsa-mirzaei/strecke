@@ -28,3 +28,21 @@ R2-15. **The three style layers (D50) and the dev style switcher are removed.** 
 - The prototype ends with "Neu starten"; the app ends with *Bis gleich.* and offers *Neue Runde* only on the summary.
 - The prototype's summary shows "Wörter sicherer" per day; the app keeps the label and computes it from the log (R2-5).
 - The cloze in the prototype has three text options; the app uses the same, falling back to two when the sheet has too few similar words (ENGINE.md).
+
+## Audio (verified 2026-10-09)
+R2-16. **Two providers behind `speak(text, key)`**: the device voice (default) and ElevenLabs with the learner's own key. A third (open-source or local) can implement the same `CloudVoice` interface later (`app/src/audio/service.ts`). Why: zero setup by default, better voices as an opt-in.
+R2-17. **ElevenLabs facts, from official sources** (no memory):
+- Text to speech: `POST https://api.elevenlabs.io/v1/text-to-speech/{voice_id}`, header `xi-api-key`, body `text`, optional `model_id` (default `eleven_multilingual_v2`) and `language_code`, query `output_format` (for example `mp3_44100_64`). https://elevenlabs.io/docs/api-reference/text-to-speech/convert
+- Voices: `GET https://api.elevenlabs.io/v2/voices` with `page_size` (max 100), fields `voice_id`, `name`, `preview_url`, `verified_languages`. https://elevenlabs.io/docs/api-reference/voices/search
+- Models: `GET https://api.elevenlabs.io/v1/models` (needs a key; answered `workspace_not_found` without), fields `model_id`, `can_do_text_to_speech`, `languages`. https://elevenlabs.io/docs/api-reference/models/list The app lists them at runtime instead of hard-coding ids that may change.
+- `language_code` is only sent for models documented to take it (Flash/Turbo v2.5, v3); sending it to other models returns an error.
+- CORS: a preflight to the API on 2026-10-09 answered `access-control-allow-origin: *` and `access-control-allow-headers: *`, so a static page can call it directly. The docs themselves do not mention browser use; if that changes, the cloud voice fails and the device voice takes over.
+- Pricing, as shown on https://elevenlabs.io/pricing/api on 2026-10-09: about $0.04 (Flash/Turbo) to $0.08 (Multilingual v2, v3) per 1,000 characters; a promotional rate on v4 until 12 Oct; plan allowances differ. The Settings text states a range and sends the learner to the page rather than hard-coding a price.
+- Terms (https://elevenlabs.io/terms): users keep rights to output they generate, subject to the terms and the prohibited-use policy. The terms say nothing specific about caching output or API-key handling, so the app caches only for the account holder's own device and makes the key handling explicit.
+R2-18. **Key handling.** The key lives in `localStorage` on the device under its own name, is sent only as the `xi-api-key` header to `api.elevenlabs.io`, is not part of settings, is not exported, is cleared by *Schlüssel entfernen* and by *Zurücksetzen*, and is never logged or placed in a URL or error message (tests). The production build ships a Content-Security-Policy whose `connect-src` is the app itself, the Sheet web app hosts and `api.elevenlabs.io`; `script-src` is the app only.
+R2-19. **Cache and cost.** Audio is cached in Cache Storage per (provider, voice, model, text hash) with a size limit (default 50 MB, oldest first) and cleared by *Audio-Cache leeren*. A per-day character cap (default 2,000) stops generating; pre-generation is off by default. Offline or on any error the device voice speaks, silently.
+R2-20. **Unlocking playback.** Fetched audio is played through one shared `<audio>` element that is started silently inside a tap (*Noch eine Runde*, *Stimme testen*), because Android Chrome only allows later playback after a gesture. To be confirmed on the phone.
+
+## Open points for the owner
+- Settings > Daten shows the source and a placeholder for the last sync: the `sheet` adapter is Phase E and was not built in round 2. Hints about thin rows are live.
+- The flap gesture, haptics, audio unlock and voice quality are judged on the Android phone only.

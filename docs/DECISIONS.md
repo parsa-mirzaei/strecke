@@ -290,3 +290,7 @@ The product owner's brief of 2026-10-07 changes the interface, the exercise mode
 - **Measured:** contrast for every text pair in all styles is ≥ 5.6:1, and amber edges ≥ 3.8:1. Build: 25 KB JS + 4 KB CSS gzipped.
 - **Recommendation: style 3 "Klartext"** (reasons in REVIEW-KARTE.md). The owner decides.
 
+
+## 2026-10-09 · Round 2 (Phase C rework)
+
+**D51 Round 2 supersedes the Station look and parts of D42.** The owner's findings F1–F4 and the round-2 brief are recorded, with every decision and deviation from the reference prototype, in [design/DECISIONS.md](design/DECISIONS.md) (R2-1 … R2-20). Engine: [ENGINE.md](ENGINE.md). Highlights: self-rated four-step Karte (reverses "no self-grade buttons" for the Karte only), runs by inactivity gap, three new exercise types, ranked distractors with an ambiguity guard, Verlauf, grouped Settings, audio provider interface with ElevenLabs on the learner's own key, no per-word pictograms, one palette in `tokens.css`.

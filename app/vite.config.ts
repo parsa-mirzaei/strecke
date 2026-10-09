@@ -1,10 +1,38 @@
 import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import preact from '@preact/preset-vite';
 import { defineConfig, type Plugin } from 'vite';
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
+const pkg = JSON.parse(readFileSync(here('./package.json'), 'utf8')) as { version: string };
+
+/**
+ * Content-Security-Policy for the build (A9): scripts only from this origin, and the only hosts the app may
+ * talk to are its own origin, the learner's Sheet web app (Google) and the audio provider the learner can
+ * switch on. Not applied to the dev server, whose hot reload needs inline scripts and a websocket.
+ */
+function csp(): Plugin {
+  const policy = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "media-src 'self' blob: data:",
+    "font-src 'self'",
+    "connect-src 'self' https://api.elevenlabs.io https://script.google.com https://script.googleusercontent.com",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "base-uri 'self'",
+    "form-action 'none'",
+  ].join('; ');
+  return {
+    name: 'strecke-csp',
+    apply: 'build',
+    transformIndexHtml: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: policy }, injectTo: 'head-prepend' }],
+  };
+}
 
 /**
  * Development only: serves the gitignored starter seed (data/seed/seed-50.csv) at /__dev/seed.csv so the
@@ -72,7 +100,8 @@ self.addEventListener('fetch', (e) => {
 
 export default defineConfig({
   base: './',
-  plugins: [preact(), serviceWorker(), devSeed()],
+  plugins: [preact(), serviceWorker(), devSeed(), csp()],
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: { alias: { '@core': here('../core/src') } },
   build: {
     target: 'es2022',

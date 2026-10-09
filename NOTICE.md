@@ -4,37 +4,19 @@ Everything below is self-hosted inside this repository or bundled at build time.
 
 ## Shipped in the app
 
-### Overpass (font; style 2)
-
-- **Project:** The Overpass Project Authors (Red Hat), https://github.com/RedHatOfficial/Overpass
-- **Package:** `@fontsource/overpass` 5.3.0 (npm, Fontsource), dev dependency; three woff2 files are bundled (latin 400, 600, 800). Overpass Mono was removed on 2026-10-08 (D50)
-- **Licence:** SIL Open Font License 1.1. The fonts may be used, bundled and redistributed with software, including commercially; they may not be sold on their own, and modified versions must stay under the OFL and not use the reserved name. Full text: `app/node_modules/@fontsource/overpass/LICENSE`, also https://openfontlicense.org
-- **Used for:** all text in style 2 "Emaille"
-
-Copyright 2021 The Overpass Project Authors (https://github.com/RedHatOfficial/Overpass)
-
 ### Barlow and Barlow Semi Condensed (fonts; style 1)
 
 - **Project:** The Barlow Project Authors (Jeremy Tribby), https://github.com/jpt/barlow
 - **Package:** `@fontsource/barlow` 5.3.0 and `@fontsource/barlow-semi-condensed` 5.3.0 (npm, Fontsource), dev dependencies; latin 500 and 600 (Barlow), latin 600 and 700 (Semi Condensed) are bundled
 - **Licence:** SIL Open Font License 1.1, read from the `LICENSE` file in each package. Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow)
-- **Used for:** style 1 "Anzeiger" (word, labels and buttons in Semi Condensed, text in Barlow)
-
-### Atkinson Hyperlegible Next (font; style 3)
-
-- **Project:** The Atkinson Hyperlegible Next Project Authors (Braille Institute), https://github.com/googlefonts/atkinson-hyperlegible-next
-- **Package:** `@fontsource/atkinson-hyperlegible-next` 5.3.0 (npm, Fontsource), dev dependency; latin 400, 600, 800 are bundled
-- **Licence:** SIL Open Font License 1.1, read from the package `LICENSE`. Copyright 2020-2024 The Atkinson Hyperlegible Next Project Authors (https://github.com/googlefonts/atkinson-hyperlegible-next)
-- **Used for:** style 3 "Klartext" (all text)
-
-While the three styles are compared, all their fonts are bundled. After the owner picks one, the fonts of the other two are removed.
+- **Used for:** all text since round 2 (headwords, labels and buttons in Semi Condensed, body text in Barlow); latin 400/500/600 and 500/600/700 are bundled. Overpass and Atkinson Hyperlegible Next, used while three styles were compared, were removed on 2026-10-09 (design/DECISIONS.md R2-14)
 
 ### Lucide (icons and pictograms)
 
 - **Project:** Lucide Icons and Contributors, https://github.com/lucide-icons/lucide, https://lucide.dev
-- **Package:** `lucide-static` 1.52.0 (npm). Not a dependency: `tools/app/build_icons.py` copies only the 50 icons in use into `app/src/ui/icons.ts`, as plain shape data
+- **Package:** `lucide-static` 1.52.0 (npm). Not a dependency: `tools/app/build_icons.py` copies only the 17 icons in use into `app/src/ui/icons.ts`, as plain shape data
 - **Licence:** ISC; icons derived from Feather are additionally under MIT (Copyright (c) 2013-present Cole Bemis)
-- **Used for:** the speaker icon and the per-word pictograms (`image_key`)
+- **Used for:** app controls only (speaker, chevrons, settings, check, download and similar). Words get no pictograms (design/DECISIONS.md R2-10)
 
 ```
 ISC License
@@ -89,15 +71,6 @@ SOFTWARE.
 ### FSRS-5 algorithm
 
 The memory model in `core/src/fsrs.ts` is an independent implementation of the published FSRS-5 formulas and default parameters of the open-spaced-repetition project (https://github.com/open-spaced-repetition, MIT). No code is copied.
-
-### Tabler Icons and Phosphor Icons (comparison page)
-
-Nine pictograms from each set appear only on the development comparison page `app/dev/compare.html`. Their data (`app/dev/compare-icons.json`) is generated locally by `tools/app/compare_icons.py` and gitignored, so neither set is in the repository or the build.
-
-- Tabler Icons: `@tabler/icons` 3.49.0, https://github.com/tabler/tabler-icons. MIT License, Copyright (c) 2020-2026 Paweł Kuna
-- Phosphor Icons: `@phosphor-icons/core` 2.1.1, https://github.com/phosphor-icons/core. MIT License, Copyright (c) 2023 Phosphor Icons
-
-Both under the MIT terms reproduced above (with their own copyright lines).
 
 ### References consulted, nothing copied (2026-10-08 design review)
 

@@ -7,7 +7,7 @@ export type RandomBytes = (n: number) => Uint8Array;
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 
-export function mintId(prefix: 'w' | 'p' | 'e' | 'c', taken: ReadonlySet<string>, randomBytes: RandomBytes): string {
+export function mintId(prefix: 'w' | 'p' | 'e' | 'c' | 'r', taken: ReadonlySet<string>, randomBytes: RandomBytes): string {
   for (let attempt = 0; attempt < 8; attempt++) {
     // 252 = 7 * 36: drop bytes above it so every character is equally likely.
     let body = '';
