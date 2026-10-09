@@ -156,11 +156,17 @@ describe('replay determinism', () => {
 
 // ------------------------------------------------------------------------------------------- picking
 
+/** A distinct English gloss per id (letters only, so no two glosses share a content word). */
+const gloss = (id: string) => { const t = [...id.slice(-3)].map((c) => (/\d/.test(c) ? String.fromCharCode(103 + Number(c)) : c)).join(''); return `${t}${t}`; };
+
+/** A distinct German headword per id (no shared stem, which the distractor rules would treat as one lemma). */
+const name = (id: string) => { const t = gloss(id).slice(0, 3); return `${t[0]!.toUpperCase()}${t.slice(1)}${['berg', 'tal', 'see', 'hof', 'weg', 'mut'][Number(id.slice(-1)) % 6]}`; };
+
 function mkWords(spec: Array<[string, 'core' | 'chunk', Row?]>): WordRecord[] {
   return spec.map(([id, tier, over]) => toWordRecord({
-    ...fullRow, word_id: id, de: `Wort${id.slice(-3)}`, en: `meaning ${id}`, tier,
+    ...fullRow, word_id: id, de: name(id), en: gloss(id), tier,
     pos: tier === 'chunk' ? 'phrase' : 'noun', article: tier === 'chunk' ? '' : 'die',
-    example_de: `Hier steht Wort${id.slice(-3)} im Satz.`, example_en: 'x', example_2_de: `Dort steht Wort${id.slice(-3)} auch.`, example_2_en: 'y',
+    example_de: `Hier steht ${name(id)} im Satz ${gloss(id)}.`, example_en: 'x', example_2_de: `Dort steht ${name(id)} auch ${gloss(id)}.`, example_2_en: 'y',
     prep: '', ...over,
   }));
 }

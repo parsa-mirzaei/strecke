@@ -27,8 +27,12 @@ export interface LearnEvent {
   help: boolean;
   /** "Weiß ich nicht". */
   dontKnow: boolean;
-  /** The option the learner chose (logged for re-tuning; not used by the scheduler). */
+  /** The option the learner chose. Wrong choices feed the distractor ranking (engine/distractors.ts). */
   chosen?: string;
+  /** Karte: the learner's own four-step answer (1 Nicht gewusst … 4 Sofort). Takes the place of the inferred rating. */
+  rating?: Rating;
+  /** The run (Runde) this card belonged to; events without one are grouped by inactivity gap. */
+  run?: string;
 }
 
 export interface WordState {
@@ -58,11 +62,12 @@ export const DEFAULT_CONFIG: EngineConfig = { newPerDay: 5, backlogPause: 40, re
 /** Above this, a right answer is rated "hard". Tuned later from the logged `ms`. */
 export const SLOW_MS: Record<ExerciseType, number> = {
   karte: Infinity, artikel: 6_000, bedeutung: 8_000, luecke: 10_000, praeposition: 8_000, hoeren: 12_000,
-  tippen: 20_000, kontext2: 10_000,
+  tippen: 20_000, kontext2: 10_000, plural: 6_000, kollokation: 9_000, reihenfolge: 25_000,
 };
 
 /** Rating inferred from behaviour; there are no self-grade buttons (D42). */
 export function ratingFor(e: LearnEvent): Rating {
+  if (e.rating) return e.rating;
   if (!e.correct || e.dontKnow) return 1;
   if (e.help || e.ms > SLOW_MS[e.exercise]) return 2;
   return 3;
@@ -103,12 +108,17 @@ export function step(state: WordState, e: LearnEvent, caps: ReadonlySet<Exercise
     return s;
   }
   const g = ratingFor(e);
+  // A new word the learner did not know stays new: its Karte comes back instead of a quiz it cannot answer yet.
+  const stillNew = e.exercise === 'karte' && g === 1 && state.stage === 0;
   const stage = Math.max(1, s.stage); // a review of an unseen word counts at stage 1
   // At stage 5 every exercise is part of the rotation, so any miss there is a gate miss (→ 3).
   const isGate = stage === 5 || gateTypes(stage, caps).includes(e.exercise);
   if (g > 1) {
     s.stage = isGate && stage < 5 ? stage + 1 : stage;
     s.streak = state.streak + 1;
+  } else if (stillNew) {
+    s.stage = 0;
+    s.streak = 0;
   } else {
     s.stage = isGate ? GATE_MISS[stage]! : Math.max(1, stage - 1);
     s.streak = 0;
@@ -329,11 +339,14 @@ export function eventFromRow(r: Readonly<Record<string, string | undefined>>): L
   if (!exercise || !r.event_id || !r.word_id || Number.isNaN(ts)) return null;
   let payload: Record<string, unknown> = {};
   try { payload = r.payload ? JSON.parse(r.payload) : {}; } catch { /* malformed payload: defaults */ }
+  const rating = [1, 2, 3, 4].includes(Number(payload.rating)) ? (Number(payload.rating) as Rating) : undefined;
   return {
-    id: r.event_id, ts, wordId: r.word_id, kind: r.type === 'seen' || exercise === 'karte' ? 'seen' : 'review', exercise,
+    id: r.event_id, ts, wordId: r.word_id, kind: r.type === 'seen' || (exercise === 'karte' && !rating) ? 'seen' : 'review', exercise,
     correct: r.result === '1', ms: Number(r.ms) || 0,
     help: payload.text_shown === true || payload.near_miss === true, dontKnow: payload.dont_know === true,
     ...(typeof payload.chosen === 'string' ? { chosen: payload.chosen } : {}),
+    ...(rating ? { rating } : {}),
+    ...(typeof payload.run === 'string' ? { run: payload.run } : {}),
   };
 }
 
@@ -341,6 +354,8 @@ export function eventFromRow(r: Readonly<Record<string, string | undefined>>): L
 export function eventToRow(e: LearnEvent, device = ''): Record<string, string> {
   const payload: Record<string, unknown> = {};
   if (e.chosen !== undefined) payload.chosen = e.chosen;
+  if (e.rating) payload.rating = e.rating;
+  if (e.run) payload.run = e.run;
   if (e.help) payload[e.exercise === 'tippen' ? 'near_miss' : 'text_shown'] = true;
   if (e.dontKnow) payload.dont_know = true;
   return {
