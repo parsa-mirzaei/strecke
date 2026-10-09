@@ -42,7 +42,7 @@ export function rowEligibility(w: WordRecord, all: readonly WordRecord[]): RowEl
   else if (w.examples.length < 2) add('example_2_de, example_2_en', ['kontext2'], 'Zweiter Beispielsatz fehlt');
   if (!w.collocation) add('collocation', ['kollokation'], 'Wortverbindung fehlt');
   else if (!collocationSplit(w)) hints.push({ column: 'collocation', unlocks: ['kollokation'], why: 'Wortverbindung enthält das Wort nicht' });
-  if (!w.prep && w.pos !== 'phrase') add('prep', ['praeposition'], 'Präposition fehlt');
+  if (!w.prep && (w.pos === 'verb' || w.pos === 'adj')) add('prep', ['praeposition'], 'Präposition fehlt');
   // A record with sentences but no choice exercise usually lacks neighbours of the same word class.
   if (!has.has('bedeutung') && !w.wrong.length) hints.push({ column: 'wrong_1, wrong_2', unlocks: ['bedeutung', 'hoeren'], why: 'zu wenige ähnliche Wörter für Antwortmöglichkeiten' });
   return { wordId: w.id, de: w.de, available, hints };

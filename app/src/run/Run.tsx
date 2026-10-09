@@ -53,6 +53,13 @@ export function Run({ ctx, run, onFinish, onLeave, onExpire }: {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [ctx.settings.runGapMin]);
 
+  // Opt-in: generate the cloud voice for this run's spoken texts while online, within the daily cap.
+  useEffect(() => {
+    if (!ctx.settings.audio.prefetch) return;
+    const texts = run.cards.flatMap((c) => (c.exercise.type === 'hoeren' ? [c.exercise.sentence] : c.exercise.type === 'karte' ? [c.exercise.sentence || c.word.de] : []));
+    void ctx.audio.prefetch(texts);
+  }, [run.id]);
+
   useEffect(() => { shownAt.current = Date.now(); answered.current = false; leaving.current = false; }, [i]);
 
   const speak = (text: string, key: string) => { void ctx.audio.speak(text, key); };

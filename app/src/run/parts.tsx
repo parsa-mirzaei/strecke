@@ -65,7 +65,7 @@ export function useFit(ref: RefObject<HTMLElement>, max: number, dep: unknown) {
     const el = ref.current;
     if (!el) return;
     const fit = () => {
-      let s = max;
+      let s = innerHeight < 700 ? Math.min(max, 52) : max;
       el.style.fontSize = `${s}px`;
       while (el.scrollWidth > el.clientWidth + 1 && s > 28) { s -= 2; el.style.fontSize = `${s}px`; }
     };

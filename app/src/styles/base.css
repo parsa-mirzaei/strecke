@@ -44,11 +44,11 @@ button:active:not(:disabled) { transform: scale(.975); }
 .stop.pop i { animation: pop .42s var(--ease); }
 
 /* ---------- zone 2: the card ---------- */
-.mid { flex: 1; display: flex; margin: 10px 0 14px; min-height: 0; min-width: 0; }
+.mid { flex: 1; display: flex; margin: 10px 0 12px; min-height: 0; min-width: 0; overflow-y: auto; overscroll-behavior: contain; }
 .card {
-  flex: 0 1 auto; width: 100%; min-width: 0; max-height: 100%; margin: auto 0; display: flex; flex-direction: column;
+  flex: none; width: 100%; min-width: 0; margin: auto 0; display: flex; flex-direction: column;
   background: var(--card); border: 1px solid var(--edge); border-radius: 10px; box-shadow: 0 4px 0 var(--edge);
-  padding: 16px 20px 16px; min-height: 0; position: relative; overflow: hidden;
+  padding: 16px 20px 16px; position: relative;
 }
 .card.cl { min-height: 280px; }
 .card-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; margin-bottom: 8px; }
@@ -242,21 +242,36 @@ details.more-set[open] > summary::before { content: "−"; }
   .quiet:hover, .link:hover { color: var(--ink); }
 }
 @media (max-height: 700px) {
-  .zone { min-height: 120px; margin-top: 12px; }
-  .mean { font-size: 32px; }
-  .ex { font-size: 19px; margin-top: 8px; }
-  .q { font-size: 28px; }
-  .card.cl { min-height: 180px; }
-  .card { padding: 12px 16px 12px; }
-  .tag { min-height: 44px; font-size: 19px; }
-  .primary { min-height: 50px; }
-  .pair .ghost { min-height: 50px; }
-  .ch { height: 74px; font-size: 13px; }
-  .sum h1, .page-title { font-size: 36px; }
-  .stats dd { font-size: 34px; }
-  .play { width: 72px; height: 72px; margin: 8px 0; }
-  .chip { min-height: 40px; font-size: 17px; }
-  .built { min-height: 90px; }
+  #app { padding-top: max(4px, env(safe-area-inset-top)); padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .top { gap: 2px; }
+  .row { min-height: 38px; }
+  .mid { margin: 6px 0 8px; }
+  .card { padding: 10px 14px 12px; }
+  .card-head { min-height: 28px; margin-bottom: 2px; }
+  .art { margin-bottom: 2px; padding: 3px 8px; }
+  .zone { min-height: 84px; margin-top: 8px; }
+  .back { padding-top: 6px; gap: 6px; }
+  .mean { font-size: 28px; }
+  .ex { font-size: 18px; margin-top: 6px; }
+  .q { font-size: 27px; }
+  .qtr { margin-top: 8px; font-size: 15px; }
+  .card.cl { min-height: 0; }
+  .act { gap: 6px; }
+  .hint { font-size: 14px; min-height: 18px; }
+  .tags { gap: 6px; }
+  .tag { min-height: 42px; font-size: 18px; padding: 4px 14px; }
+  .primary, .pair .ghost { min-height: 46px; font-size: 16px; }
+  .ch { height: 68px; font-size: 12.5px; gap: 6px; }
+  .sum h1, .page-title { font-size: 34px; }
+  .stats dd { font-size: 32px; }
+  .stats div { padding: 8px 0 6px; }
+  .kicker { margin-top: 18px; }
+  .play { width: 60px; height: 60px; margin: 4px 0 2px; }
+  .slot.wide { font-size: 21px; }
+  .chip { min-height: 38px; font-size: 16px; padding: 0 10px; }
+  .chips { gap: 6px; }
+  .built { min-height: 64px; margin-top: 8px; padding: 8px; gap: 6px; }
+  .end h1 { font-size: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .enter { animation: fade .2s both; }

@@ -181,8 +181,32 @@ async function flow(base) {
   });
 }
 
+/** A6: load the production build once online, go offline, reload: the first card must still render. */
+async function offline(base) {
+  return withChrome(async (send) => {
+    await open(send, base, '', SIZES[390], 'light');
+    for (let i = 0; i < 50; i++) { // wait for the service worker to take control
+      if (await evaluate(send, '!!navigator.serviceWorker.controller')) break;
+      await sleep(200);
+    }
+    await sleep(1500);
+    await send('Network.enable');
+    await send('Network.emulateNetworkConditions', { offline: true, latency: 0, downloadThroughput: 0, uploadThroughput: 0 });
+    await send('Page.navigate', { url: `${base}?demo` });
+    let ok = false;
+    for (let i = 0; i < 40 && !ok; i++) { await sleep(150); ok = await evaluate(send, '!!document.querySelector(".card")'); }
+    const font = await evaluate(send, 'document.fonts.check("16px Barlow")');
+    return { ok, font };
+  });
+}
+
 const args = process.argv.slice(2);
-if (args[0] === '--flow') {
+if (args[0] === '--offline') {
+  const r = await offline(args[1] ?? 'http://localhost:4199/');
+  console.log(r.ok ? 'offline: first card rendered from the device' : 'OFFLINE FAILED');
+  console.log('fonts available offline:', r.font);
+  process.exit(r.ok ? 0 : 1);
+} else if (args[0] === '--flow') {
   const res = await flow(args[1] ?? 'http://localhost:5199/');
   console.log('types played:', res.seen.join(', '));
   console.log('summary:', res.summary);
