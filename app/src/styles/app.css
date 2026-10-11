@@ -200,6 +200,7 @@ svg {
 .link {
   border: 0;
   background: transparent;
+  min-height: 44px;
   padding: 10px 0;
   color: var(--ink);
   font-weight: 600;
@@ -411,6 +412,9 @@ svg {
 }
 .meaning-after {
   font-size: 1.0625rem;
+}
+.sep {
+  margin: 0 0.5em;
 }
 .almost strong {
   color: var(--ok);

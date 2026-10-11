@@ -301,7 +301,7 @@ export function Card(p: CardProps) {
             {(showTranslation || answered) && x.sentenceEn && <p class="board-sub" lang="en">{x.sentenceEn}</p>}
           </div>
           {options(x.type === 'praeposition')}
-          {answered && x.type !== 'praeposition' && <p class="meaning-after"><span lang="de">{word.article ? `${word.article} ${word.de}` : word.de}</span>{'  ·  '}<span lang="en">{word.en}</span></p>}
+          {answered && x.type !== 'praeposition' && <p class="meaning-after"><span lang="de">{word.article ? `${word.article} ${word.de}` : word.de}</span><span class="sep" aria-hidden="true">·</span><span lang="en">{word.en}</span></p>}
         </>
       );
     }
