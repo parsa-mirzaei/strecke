@@ -10,7 +10,7 @@ import { clean } from '../text.ts';
 import { INBOX_ALIASES, mapHeaders, normHeader, SCHEMA_VERSION } from './contract.ts';
 
 export type InboxRead =
-  | { ok: true; total: number; waiting: number; processed: number; waitingWords: string[] }
+  | { ok: true; headers: string[]; total: number; waiting: number; processed: number; waitingWords: string[] }
   | { ok: false; problem: 'empty' | 'not_csv' | 'no_word_column' };
 
 export function parseInboxCsv(text: string): InboxRead {
@@ -27,8 +27,11 @@ export function parseInboxCsv(text: string): InboxRead {
   const rows = table.slice(1).filter((r) => clean(r[head.index.word!] ?? ''));
   const isDone = (r: string[]) => head.index.processed !== undefined && !!clean(r[head.index.processed] ?? '');
   const waiting = rows.filter((r) => !isDone(r));
+  const headers = (table[0] ?? []).map((h) => clean(h));
+  while (headers.length && !headers.at(-1)) headers.pop();
   return {
     ok: true,
+    headers,
     total: rows.length,
     waiting: waiting.length,
     processed: rows.length - waiting.length,

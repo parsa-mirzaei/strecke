@@ -22,4 +22,6 @@ Desktop emulation is not evidence for feel, timing, safe areas or the on-screen 
 
 | Slice 3 | 160 | 0 | Settings › Data now has the connect form (guide, link fields, CSV fallback) |
 
+| Slice 4 | 256 | 0 | Adds a sheet phase per viewport, text size and language: run start (demo vs sheet), Data connected, Fill my list gated and ready. Fixed on the way: the instructions box is no longer flagged (it scrolls by design), and labelled values now wrap under their label at 320 px instead of breaking mid-word
+
 Later runs are added below as the screens grow.

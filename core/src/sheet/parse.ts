@@ -65,6 +65,8 @@ export type SheetProblem = 'empty' | 'not_csv' | 'no_word_column' | 'too_large';
 export type ParsedWords =
   | {
     ok: true;
+    /** The header row exactly as written (trailing empty cells dropped), for the agent instructions. */
+    headers: string[];
     columns: WordsColumn[];
     unknownColumns: string[];
     rows: SheetRow[];
@@ -284,8 +286,11 @@ export function parseWordsCsv(text: string): ParsedWords {
       hash: sha256(JSON.stringify([row, meta])).slice(0, 16),
     });
   });
+  const headers = table[headerAt]!.map((h) => clean(h));
+  while (headers.length && !headers.at(-1)) headers.pop();
   return {
     ok: true,
+    headers,
     columns: (Object.keys(idx) as WordsColumn[]).sort((a, b) => idx[a]! - idx[b]!),
     unknownColumns: header.unknown,
     rows,

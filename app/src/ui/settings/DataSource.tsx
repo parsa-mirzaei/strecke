@@ -172,7 +172,7 @@ export function DataSource(p: DataSourceProps) {
       {schema.status === 'newer' && <p class="explain">{t('sheet.schemaNewer', { sheet: schema.sheet, app: schema.app })}</p>}
       {schema.status === 'older' && <p class="explain">{t('sheet.schemaOlder', { sheet: schema.sheet, app: schema.app })}</p>}
       {schema.status === 'unreadable' && <p class="explain">{t('sheet.schemaUnreadable', { value: schema.value })}</p>}
-      {cache.inbox?.ok && <p class="explain">{cache.inbox.waiting ? t('sheet.inboxWaiting', { n: cache.inbox.waiting }) : t('sheet.inboxEmpty')}</p>}
+      {cache.inbox?.ok && <p class="explain">{cache.inbox.waiting === 1 ? t('sheet.inboxWaitingOne') : cache.inbox.waiting ? t('sheet.inboxWaiting', { n: cache.inbox.waiting }) : t('sheet.inboxEmpty')}</p>}
       {cache.unknownColumns.length > 0 && <p class="explain">{t('sheet.unknownColumns', { list: cache.unknownColumns.slice(0, 8).join(', ') })}</p>}
       <Attention cache={cache} />
       {p.skipped > 0 && (

@@ -611,10 +611,14 @@ svg {
   font-weight: 600;
 }
 .facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
   gap: 4px 16px;
   margin: 0;
+}
+.facts dd {
+  flex: 1 1 9em; /* wraps under its label on narrow screens instead of breaking mid-word */
 }
 .facts dt {
   color: var(--ink-2);
@@ -770,4 +774,37 @@ details > summary::-webkit-details-marker {
 }
 .attention li {
   overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------------------------ settings: fill my list */
+
+.fill {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.gate {
+  margin: 0;
+  padding: 12px 14px;
+  border: 2px dashed var(--line);
+  border-radius: 6px;
+  color: var(--ink-2);
+}
+.field textarea {
+  min-height: 14rem;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.field small {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+.plan ol {
+  margin: 0;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }

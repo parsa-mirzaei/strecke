@@ -90,6 +90,23 @@ assert.match(await page.textContent('#data .status'), /web page instead of CSV/)
 assert.match(await page.textContent('#data'), /Your sheet · 7 words/);
 csv = saved;
 
+// Fill my list: the sheet's own address pasted earlier is the reference; Generate now copies the
+// text and opens the assistant's site in a new tab. The app itself sends nothing to any AI service.
+await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+await page.locator('#fill').scrollIntoViewIfNeeded();
+assert.equal(await page.inputValue('#fill input[type=url]'), 'https://docs.google.com/spreadsheets/d/abc123/edit');
+assert.match(await page.inputValue('#fill textarea'), /word \| article \| meaning \| pos \| example/);
+const aiRequests = [];
+page.on('request', (r) => /claude\.ai|chatgpt\.com|openai|anthropic/.test(r.url()) && aiRequests.push(r.url()));
+const [popup] = await Promise.all([ctx.waitForEvent('page'), page.click('#fill .primary')]);
+assert.match(popup.url(), /^https:\/\/claude\.ai\/new|^about:blank/);
+await popup.close();
+assert.match(await page.textContent('#fill .status'), /Copied/);
+const clip = await page.evaluate(() => navigator.clipboard.readText());
+assert.match(clip, /# Fill my German word list/);
+assert.deepEqual(aiRequests.filter((u) => !u.startsWith('https://claude.ai/new')), []);
+await shot('fill-ready');
+
 // Disconnect returns to the demo words.
 await page.click('text=Disconnect');
 await page.click('.plan .primary');

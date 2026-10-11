@@ -22,6 +22,8 @@ export interface SheetConnection {
 
 export interface SheetCache {
   textHash: string;
+  /** The words tab's header row as written; Fill my list builds its column order from it. */
+  headers: string[];
   rows: SheetRow[];
   columns: WordsColumn[];
   unknownColumns: string[];
@@ -94,7 +96,7 @@ export function cacheFromText(text: string, prev: SheetCache | null, now: number
   const diff = diffRows(prev?.rows ?? null, parsed.rows);
   return {
     cache: {
-      textHash, rows: parsed.rows, columns: parsed.columns, unknownColumns: parsed.unknownColumns,
+      textHash, headers: parsed.headers, rows: parsed.rows, columns: parsed.columns, unknownColumns: parsed.unknownColumns,
       syncedAt: now, attemptAt: now, lastProblem: null, ...extras,
     },
     diff,
@@ -103,7 +105,7 @@ export function cacheFromText(text: string, prev: SheetCache | null, now: number
 }
 
 export function emptyCache(): SheetCache {
-  return { textHash: '', rows: [], columns: [], unknownColumns: [], syncedAt: 0, attemptAt: 0, lastProblem: null, inbox: null, schema: { status: 'none' } };
+  return { textHash: '', headers: [], rows: [], columns: [], unknownColumns: [], syncedAt: 0, attemptAt: 0, lastProblem: null, inbox: null, schema: { status: 'none' } };
 }
 
 /** Read every connected tab. Optional tabs that fail are simply left out (never an error). */

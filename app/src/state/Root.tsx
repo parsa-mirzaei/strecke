@@ -8,6 +8,7 @@ import { App } from '../App';
 import { getLocale, t } from '../i18n';
 import { browserEnv, connect, connectFile, shouldAutoSync, syncSheet, type ConnectOutcome, type SheetCache, type SheetConnection, type SyncResult } from '../sheet/sync';
 import { DataSource } from '../ui/settings/DataSource';
+import { DEFAULT_FILL, FillMyList, type FillPrefs } from '../ui/settings/FillMyList';
 import type { Boot } from './boot';
 import { demoContent, sheetContent } from './content';
 
@@ -15,26 +16,38 @@ export const KEYS = { conn: 'sheet.connection', cache: 'sheet.cache', skips: 'sh
 
 export interface RootProps {
   boot: Boot;
-  initial: { conn: SheetConnection | null; cache: SheetCache | null; skips: string[] };
-  /** Rendered in Settings › Fill my list (slice 4). */
-  fillMyList?: (ctx: { conn: SheetConnection | null; cache: SheetCache | null; content: ReturnType<typeof sheetContent> | null }) => preact.ComponentChildren;
+  initial: { conn: SheetConnection | null; cache: SheetCache | null; skips: string[]; fill: FillPrefs };
 }
 
 export async function loadSheetState(boot: Boot): Promise<RootProps['initial']> {
-  const [conn, cache, skips] = await Promise.all([
+  const [conn, cache, skips, fill, ref] = await Promise.all([
     boot.store.get<SheetConnection>(KEYS.conn),
     boot.store.get<SheetCache>(KEYS.cache),
     boot.store.get<string[]>(KEYS.skips),
+    boot.store.get<Partial<FillPrefs>>('fill'),
+    boot.store.get<{ url: string }>(KEYS.ref),
   ]);
-  return { conn: conn ?? null, cache: cache ?? null, skips: Array.isArray(skips) ? skips : [] };
+  return {
+    conn: conn ?? null,
+    cache: cache ? { ...cache, headers: cache.headers ?? [] } : null,
+    skips: Array.isArray(skips) ? skips : [],
+    fill: { ...DEFAULT_FILL, ...(fill ?? {}), sheetRef: fill?.sheetRef || ref?.url || '' },
+  };
 }
 
-export function Root({ boot, initial, fillMyList }: RootProps) {
+export function Root({ boot, initial }: RootProps) {
   const { store } = boot;
   const [conn, setConn] = useState(initial.conn);
   const [cache, setCache] = useState(initial.cache);
   const [skips, setSkips] = useState<string[]>(initial.skips);
   const [notice, setNotice] = useState<string | null>(null);
+  const [fill, setFill] = useState<FillPrefs>(initial.fill);
+  const fillRef = useRef(fill);
+  fillRef.current = fill;
+  const updateFill = (f: FillPrefs) => {
+    setFill(f);
+    store.set('fill', f);
+  };
   const syncing = useRef(false);
   const state = useRef({ conn, cache });
   state.current = { conn, cache };
@@ -85,7 +98,11 @@ export function Root({ boot, initial, fillMyList }: RootProps) {
     if (!r.ok) {
       if (r.problem === 'edit_link' && r.sheetId) {
         const ref = parseSheetReference(`https://docs.google.com/spreadsheets/d/${r.sheetId}/edit`);
-        if (ref.ok) await store.set(KEYS.ref, ref);
+        if (ref.ok) {
+          await store.set(KEYS.ref, ref);
+          // Fill my list picks the address up if the learner has not typed one.
+          if (!fillRef.current.sheetRef) updateFill({ ...fillRef.current, sheetRef: ref.url });
+        }
       }
       return r;
     }
@@ -121,7 +138,7 @@ export function Root({ boot, initial, fillMyList }: RootProps) {
       boot={boot}
       content={content}
       dataSource={dataSource}
-      fillMyList={fillMyList?.({ conn, cache, content: sheet })}
+      fillMyList={<FillMyList connection={conn} cache={cache} prefs={fill} onPrefs={updateFill} />}
       notice={notice}
       onNoticeShown={() => setNotice(null)}
       onSkipWord={async (w) => {

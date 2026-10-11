@@ -35,7 +35,7 @@ async function check(page) {
     for (const el of document.querySelectorAll('button, a, input, textarea, select, [role=radio]')) {
       const r = el.getBoundingClientRect();
       if (!r.width) continue;
-      if (el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflow !== 'visible') out.push(`clipped label: "${el.textContent.trim().slice(0, 40)}"`);
+      if (!el.matches('textarea, input, select') && el.scrollWidth > el.clientWidth + 2 && getComputedStyle(el).overflow !== 'visible') out.push(`clipped label: "${el.textContent.trim().slice(0, 40)}"`);
       if (r.height < 43.5 && !el.matches('input[type=file]')) out.push(`small tap target (${Math.round(r.height)}px): "${(el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 40)}"`);
     }
     return [...new Set(out)];
@@ -86,6 +86,65 @@ async function snap(page, name, report) {
   await page.screenshot({ path: `${out}/${name}.png`, fullPage: true });
 }
 
+// A fake Google for the sheet phase: synthetic CSV, no network, no real sheet.
+const KEY = '2PACX-placeholderkey';
+const PUB = `https://docs.google.com/spreadsheets/d/e/${KEY}/pub?gid=0&single=true&output=csv`;
+const INBOX = `https://docs.google.com/spreadsheets/d/e/${KEY}/pub?gid=1&single=true&output=csv`;
+const WORDS_CSV = [
+  'word,article,plural,meaning,pos,topic,example,example_translation,example_form,collocation,prep,level,source,added,verified',
+  'Haltestelle,die,Haltestellen,stop (bus/tram),noun,alltag,Wir steigen an der nächsten Haltestelle aus.,We get off at the next stop.,,an der Haltestelle warten,an,A2,me,2026-10-01,yes',
+  'Schrank,,,wardrobe,noun,Wohnung,Der Schrank ist voll.,The wardrobe is full.,,,,A2,agent,2026-10-10,no',
+  'Feierabend,der,,end of the working day,noun,arbeit,Endlich Feierabend!,Finally done for the day!,,Feierabend machen,,B1,agent,2026-10-11,',
+  'abholen,,,to pick up,verb,alltag,Ich hole dich um acht ab.,I will pick you up at eight.,,,,A2,agent,2026-10-11,',
+  'Gabel,die,,,noun,,,,,,,,me,,',
+].join('\n');
+const INBOX_CSV = 'word,note,processed\nKühlschrank,,\nVerabredung,heard it at work,2026-10-10\n';
+
+async function fakeGoogle(ctx) {
+  await ctx.route('https://docs.google.com/**', (route) => {
+    const url = route.request().url();
+    const body = url === PUB ? WORDS_CSV : url === INBOX ? INBOX_CSV : null;
+    return route.fulfill({
+      status: 200,
+      headers: { 'content-type': body ? 'text/csv' : 'text/html', 'access-control-allow-origin': '*' },
+      body: body ?? '<!DOCTYPE html><html></html>',
+    });
+  });
+}
+
+/** Settings › Data (connected) and Fill my list (gated, then ready), then the sheet's run start. */
+async function sheetScreens(page, tag, report) {
+  await page.click('.top .icon-btn');
+  await page.waitForSelector('.settings');
+  await snap(page, `${tag}-data-not-connected`, report);
+  await page.locator('#fill').scrollIntoViewIfNeeded();
+  await snapEl(page, '#fill', `${tag}-fill-gated`, report);
+  await page.fill('.connect input[type=url] >> nth=0', 'https://docs.google.com/spreadsheets/d/your-sheet-id/edit');
+  await page.click('.connect button[type=submit]');
+  await page.waitForSelector('[role=alert]');
+  await page.click('.connect details:not(.guide) > summary');
+  await page.fill('.connect input[type=url] >> nth=0', PUB);
+  await page.fill('.connect input[type=url] >> nth=1', INBOX);
+  await page.click('.connect button[type=submit]');
+  await page.waitForSelector('.attention');
+  await page.click('.attention summary');
+  await snapEl(page, '#data', `${tag}-data-connected`, report);
+  await snapEl(page, '#fill', `${tag}-fill-ready`, report);
+  await page.click('.screen-top .icon-btn');
+  await page.waitForSelector('.card');
+  await page.click('.top .icon-btn');
+  await page.click('.screen-top .icon-btn'); // a new visit shows the source line again
+  await page.waitForSelector('.card');
+  await snap(page, `${tag}-run-start-sheet`, report);
+}
+
+async function snapEl(page, selector, name, report) {
+  await page.waitForTimeout(300);
+  const problems = await check(page);
+  report.push({ name, problems });
+  await page.locator(selector).screenshot({ path: `${out}/${name}.png` });
+}
+
 const browser = await chromium.launch();
 const report = [];
 const quick = flag === '--quick';
@@ -105,6 +164,19 @@ for (const [w, h] of quick ? [[320, 600], [390, 844]] : VIEWPORTS) {
         await page.waitForSelector('.settings');
         await snap(page, `${tag}-settings`, report);
         await ctx.close();
+        if (theme === 'light') {
+          // Sheet phase: a fresh device, a fake published sheet, the screens that come with it.
+          const sctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+          await fakeGoogle(sctx);
+          const sp = await sctx.newPage();
+          await sp.goto(base);
+          await sp.waitForSelector('.card, .empty');
+          await snap(sp, `${tag}-run-start-demo`, report);
+          await setPrefs(sp, theme, locale);
+          if (scale !== 100) await sp.addStyleTag({ content: `html { font-size: ${scale}% !important; }` });
+          await sheetScreens(sp, tag, report);
+          await sctx.close();
+        }
       }
     }
   }

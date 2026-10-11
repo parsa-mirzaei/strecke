@@ -197,7 +197,7 @@ describe('row identity and incremental sync', () => {
 describe('optional tabs', () => {
   it('Inbox: counts waiting and processed words; tolerates a missing processed column', () => {
     const r = parseInboxCsv(csv([['Word', 'Note', 'Processed'], ['Kühlschrank', '', ''], ['Feierabend', 'heard at work', '2026-10-10'], ['', 'x', '']]));
-    expect(r).toEqual({ ok: true, total: 2, waiting: 1, processed: 1, waitingWords: ['Kühlschrank'] });
+    expect(r).toEqual({ ok: true, headers: ['Word', 'Note', 'Processed'], total: 2, waiting: 1, processed: 1, waitingWords: ['Kühlschrank'] });
     expect(parseInboxCsv(csv([['wort'], ['Tisch']]))).toMatchObject({ ok: true, waiting: 1 });
     expect(parseInboxCsv(csv([['foo'], ['x']]))).toEqual({ ok: false, problem: 'no_word_column' });
   });
