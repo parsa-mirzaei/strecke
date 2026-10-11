@@ -4,6 +4,31 @@ Strecke is an offline-first PWA for A2–B1 German learners. It opens straight i
 
 **Principle: AI proposes. Deterministic code validates. Core is authoritative.**
 
+## 0. Three layers: what the app runs on today (DECISIONS R4-1)
+
+```
+ ┌──────────────────────────────┐  publish to web (CSV,   ┌──────────────────────────────┐
+ │ 1 CONTENT: the learner's     │  one link per tab)      │ 3 APP: static PWA            │
+ │   Google Sheet               │ ──────────────────────► │   GitHub Pages, no server,   │
+ │   Words (+ Inbox, Meta)      │  read-only, never       │   no keys, no AI calls       │
+ │   written by the learner and │  written by the app     │   Stable · Next · old live   │
+ │   their own AI assistant     │  (or a CSV file)        │   (separate namespaces)      │
+ └──────────────────────────────┘                         └──────────────┬───────────────┘
+                                                                         │ reads/writes
+                                                          ┌──────────────▼───────────────┐
+                                                          │ 2 WORKING STATE: the device  │
+                                                          │   IndexedDB v2: events (one  │
+                                                          │   record each), meta, kv     │
+                                                          │   (library, settings),       │
+                                                          │   quarantine; backup file    │
+                                                          └──────────────────────────────┘
+```
+
+- **Content** lives in the sheet. The app reads it through Google's "Publish to web" CSV links (contract: [SHEET_SCHEMA.md](SHEET_SCHEMA.md)), ingests it incrementally and keeps the last good copy on the device. A sync never blocks practice.
+- **Working state** lives on the device: the event log (answers, Karte ratings), the library of every row ever seen, settings. Writes happen in one IndexedDB transaction at the end of a run (`app/src/storage/`); damaged records are set aside in `quarantine`, never dropped. A backup file (Web Share or download, merge-only restore with a dry run) protects it.
+- **The app** is static files. Each channel has its own IndexedDB name, localStorage prefix, cache prefix and service-worker scope, so channels on one origin never see each other's data (verification in [design/PORT_MAP.md](design/PORT_MAP.md#isolation-verified-2026-10-11)).
+- The Apps Script web app, Inbox validator and Core writer below are built and tested in `core/` and `apps-script/`, but the app does not use them in this path; they remain the design for a private write-back path (Phase E).
+
 ## 1. Components
 
 | Component | Where | Status | Role |
@@ -12,7 +37,7 @@ Strecke is an offline-first PWA for A2–B1 German learners. It opens straight i
 | Inbox setup | [apps-script/inbox-setup.gs](../apps-script/inbox-setup.gs) | Built, not yet run | Creates the Inbox tabs and locks all but the agent columns |
 | Exercise generator | [core/src/exercises.ts](../core/src/exercises.ts), [record.ts](../core/src/record.ts), [typing.ts](../core/src/typing.ts) | Built (Phase B) | `exercisesFor(word, allWords)`: exercises and distractors derived from a record's columns; compat layer for legacy prompts/clozes ([SPEC "Exercises"](SPEC.md#exercises-generated-from-the-record)) |
 | Scheduler | [core/src/scheduler.ts](../core/src/scheduler.ts), [fsrs.ts](../core/src/fsrs.ts) | Built (Phase B); *Dein Weg* evidence in Phase D | Pure fold over the event log: stage ladder (which exercise) + FSRS-5 memory model (when); card picker |
-| Data adapters | [core/src/data/](../core/src/data) | `demo`, `local` built (Phase B); IndexedDB store in Phase C; `sheet` in Phase E | One `DataAdapter` interface; UI and scheduler never know the source. `sheet` speaks the D31 API and is tested against fakes before any real Sheet |
+| Data adapters | [core/src/data/](../core/src/data) | `demo`, `local`, `sheet` (published CSV, Round 3/4) built; events through an `EventLog` (IndexedDB v2 in the app) | One `DataAdapter` interface; UI and scheduler never know the source. `sheet` speaks the D31 API and is tested against fakes before any real Sheet |
 | Backend | `apps-script/` | Phase E | Web app (`bootstrap`, `sync`, per-copy token, D31/D45) plus triggers: importer (hourly), agent-view publisher, daily backup. Bound to Core: in the learner's account (simple mode) or the vault account (hardened mode) |
 | PWA | `app/` | Phase C–D (Station UI; the Heft prototype of MVP2 slice 1 is live until then) | Practice, Dein Weg, Wörter, Hinzufügen, Vorschläge, Einstellungen; IndexedDB cache, event queue. Reaches Core through the `sheet` adapter |
 | Agent contract and routine | [agents/contract.md](../agents/contract.md), [agents/routine.md](../agents/routine.md) | Built (docs) | What the weekly agent is told, and the routine configuration that limits it |
