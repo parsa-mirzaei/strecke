@@ -2,6 +2,13 @@
 
 Revised Oct 2, 2026 (product framing, privacy, demo mode, tiers, Phase 7) and Oct 7, 2026 (Station interface, exercises generated from record columns, FSRS memory model, typed answers; DECISIONS D36–D47). Interface details: [design/STATION.md](design/STATION.md).
 
+> **Round 4 (2026-10-11, DECISIONS D49–D58) changes this spec where they conflict.**
+> - Three layers: the sheet is read only, through a published CSV, and answers stay on the device with backups. This replaces the Apps Script API path for the app.
+> - The level is the learner's own input; the app is not limited to A2–B1.
+> - The UI is English by default, with German.
+> - The Karte has a self-report row.
+> - *Fill my list* replaces in-app agent integration. See [ARCHITECTURE §0](ARCHITECTURE.md), [SHEET_SCHEMA.md](SHEET_SCHEMA.md), [STORAGE.md](STORAGE.md).
+
 Strecke is a German learning helper for **A2–B1 learners**. It opens straight into one practice card in under 2 seconds, works offline, saves every answer to the learner's own Google Sheet, and accepts new vocabulary from scheduled AI agents through a review queue. v0.1 is **real and daily-usable**, not a mock-up: the first user runs a 4-week test with it.
 
 ## Product framing

@@ -2,6 +2,39 @@
 
 Strecke is an offline-first PWA for A2–B1 German learners. It opens straight into one practice card, keeps the learner's corpus and history in their own Google Sheet, and accepts new vocabulary that scheduled AI agents propose. Product scope: [SPEC.md](SPEC.md). Decisions: [DECISIONS.md](DECISIONS.md). Security design and evidence: [security/](security/).
 
+## 0. Round 4: three layers (D49), the app path in use now
+
+```
+┌─────────────────────────────┐   "Publish to web" CSV, read only   ┌──────────────────────────┐        ┌───────────────────────────────┐
+│ Learner's Google Sheet      │ ──────────────────────────────────► │ Strecke PWA (static,     │ ◄────► │ This device: IndexedDB        │
+│ content layer               │   fetch on connect / on return,     │ GitHub Pages)            │        │ events (append-only log),     │
+│ Words · Inbox · Meta        │   cached, offline-safe (D56)        │ engine: ladder + FSRS-5  │        │ settings, sheet cache, skips; │
+└──────────────▲──────────────┘                                     │ UI: Station              │        │ backup file (D50, D51)        │
+               │ appends rows                                        └────────────┬─────────────┘        └───────────────────────────────┘
+               │                                                                  │ copies instructions to the clipboard,
+┌──────────────┴──────────────┐                                                   │ opens the assistant's site (D58)
+│ The learner, or the         │ ◄─────────────────────────────────────────────────┘
+│ learner's OWN AI assistant  │   the app never calls an AI service or an AI account
+└─────────────────────────────┘
+```
+
+| Layer | Holds | Written by | Read by |
+| --- | --- | --- | --- |
+| Google Sheet | words and their columns, Inbox, Meta ([SHEET_SCHEMA.md](SHEET_SCHEMA.md)) | the learner, the learner's own AI assistant | the app (published CSV), the assistant |
+| Device | the event log, derived FSRS state, settings, cached sheet, local skips ([STORAGE.md](STORAGE.md)) | the app | the app, and backups |
+| App | code only | the build | the browser |
+
+| Module | Where |
+| --- | --- |
+| Sheet contract, link parsing, tolerant row parser, identity, diff, Inbox/Meta, instruction generator | [core/src/sheet/](../core/src/sheet) |
+| Device store, migrations, quarantine, persist, backup/restore | [app/src/storage/](../app/src/storage) |
+| Sheet sync (fetch, cache, connect, auto-sync on return) | [app/src/sheet/sync.ts](../app/src/sheet/sync.ts) |
+| Practice on the core engine | [app/src/engine/practice.ts](../app/src/engine/practice.ts), [app/src/ui/Card.tsx](../app/src/ui/Card.tsx) |
+| Settings: Data, Fill my list, Appearance, Sound | [app/src/ui/settings/](../app/src/ui/settings) |
+| UI strings (en default, de) | [app/src/i18n/](../app/src/i18n) |
+
+The sections below describe the Core/Inbox/Apps Script architecture of Phases 0–B. The code stays in the repo (security core, importer, writer, audit); the app does not use that path in Round 4.
+
 **Principle: AI proposes. Deterministic code validates. Core is authoritative.**
 
 ## 1. Components

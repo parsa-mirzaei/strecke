@@ -46,7 +46,14 @@ It checks generic patterns (emails, Google/Drive/Apps Script IDs and URLs, routi
 - Motion: card enter 680 ms `cubic-bezier(.22,.9,.28,1.02)`, exit 340 ms; the right answer flies into the blank; the cover slides aside; after answering, *Weiter* or swipe up (follows the finger, rubber-bands, velocity-aware). Everything interruptible; press `scale(.97)`; haptics feature-detected; `prefers-reduced-motion` → fades only. Tuned on the Android phone only.
 - Audio: Web Speech `de-DE`, voices via `voiceschanged` + timeout fallback, speak only inside tap handlers; hide the speaker and skip Hören if no German voice.
 
-## Data and API (summary; SPEC wins on conflict)
+## Round 4 (D49–D58) overrides where it conflicts
+- **Three layers.** The Google Sheet is the content layer, read only via "Publish to web" CSV. The device (IndexedDB) holds the event log and state. The app is a static PWA that never calls an AI service or account.
+- **Level and language.** The level is user input, not limited to A2–B1. The UI is English by default, German second, all strings in `app/src/i18n`.
+- **Karte self-report row** (D52).
+- **Fill my list** generates instructions for the learner's own AI (D58).
+- **Preview channel** builds with `npm run build:preview` (separate storage namespace). Never push `main` without the owner's go.
+
+## Data and API (summary; SPEC wins on conflict, Round 4 wins over both)
 - Tabs: `README`, `inbox`, `words`, `prompts`, `events`, `word_state`, `captures`, `config`. Agents append only to `inbox`; the normalizer is the only automated writer of `words`/`prompts`.
 - `words` carries `tier` (core/chunk) and `start_stage` (0 except seed), plus optional record columns (`plural`, `example_de/en/form`, `example_2_de/en/form`, `collocation`, `prep`, `note`, `wrong_1/2`, `image_key`; D38). A missing column only means fewer exercises. `prompts` is an optional override layer. IDs minted by the writer: `w_`/`p_`/`e_`/`c_` + 8 chars. `dedupe_key` = `de` lower-cased, article stripped, whitespace collapsed, umlauts/ß kept; unique across all statuses.
 - Domains (five): `arbeit`, `uni`, `amt`, `alltag`, `smalltalk`. pos: `noun`, `verb`, `adj`, `phrase`.
