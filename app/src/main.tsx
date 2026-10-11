@@ -4,7 +4,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import { openSource } from './data/source';
 import { clearStore } from './data/idb';
-import { NS } from './ns';
+import { CHANNEL, NS } from './ns';
 import { loadDevice } from './state/device';
 import { openAppStore } from './storage/store';
 import { App } from './App';
@@ -32,7 +32,10 @@ import { applyAppearance, loadSettings } from './state/settings';
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {
+    navigator.serviceWorker.register('./sw.js').then(async (reg) => {
+      // Next channel only (the Stable worker ignores it): refill the offline shell if something deleted it.
+      if (CHANNEL !== 'stable' && navigator.onLine) (reg.active ?? (await navigator.serviceWorker.ready).active)?.postMessage('heal');
+    }).catch(() => {
       /* offline support is optional; the app still works online */
     });
   });

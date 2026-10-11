@@ -226,6 +226,7 @@ details.more-set[open] > summary::before { content: "−"; }
 .small-btn { min-height: 44px; border: 2px solid var(--control); border-radius: 8px; background: none; padding: 0 14px; font: 500 16px var(--f-body); display: inline-flex; align-items: center; gap: 8px; }
 .small-btn.solid { background: var(--ink); color: var(--ground); border-color: var(--ink); }
 .small-btn:disabled { border-color: var(--edge); color: var(--disabled-ink); cursor: default; }
+.small-btn { max-width: 100%; text-align: left; padding-block: 6px; } /* long labels (German, large text) wrap between words inside the button */
 .licence { border-top: 1px solid var(--edge); padding: 12px 0; font: 400 15px/1.4 var(--f-body); }
 .licence b { font: 600 17px var(--f-body); display: block; }
 .licence a { color: var(--ink); word-break: break-all; }

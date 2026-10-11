@@ -1,10 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
+import { de } from '../src/i18n/de';
+import { en } from '../src/i18n/en';
 
 /**
  * Layout checks for every exercise type on the stress fixture (round 3, section 3): no horizontal
  * overflow, no clipped text, nothing outside its zone (route on top, card in the middle, actions at
  * the thumb). Each type is shown with the stress row whose exercise carries the most text.
+ * Round 4 port: every check runs in both interface languages (en, de) and both schemes (light, dark),
+ * at four phone sizes and text at 100 % and 130 %, plus the connected-sheet screens.
  */
+const LANGS = { en, de } as const;
+type Lang = keyof typeof LANGS;
+const THEMES = ['light', 'dark'] as const;
 const TYPES = ['karte', 'artikel', 'plural', 'bedeutung', 'luecke', 'praeposition', 'kollokation', 'hoeren', 'tippen', 'reihenfolge', 'kontext2'];
 const SIZES: Array<[number, number]> = [[320, 600], [360, 740], [390, 844], [430, 932]];
 
@@ -62,7 +69,7 @@ async function audit(page: Page): Promise<string[]> {
 /** Emulates the Android text-size setting: every font grows by `f` (boxes do not), then fitting re-runs. */
 async function scaleText(page: Page, f: number) {
   await page.evaluate((f) => {
-    for (const el of document.querySelectorAll<HTMLElement>('#app *')) el.style.fontSize = `${parseFloat(getComputedStyle(el).fontSize) * f}px`;
+    for (const el of document.querySelectorAll<HTMLElement>('#app *:not([data-scaled])')) { el.style.fontSize = `${parseFloat(getComputedStyle(el).fontSize) * f}px`; el.dataset.scaled = ''; }
     dispatchEvent(new Event('resize'));
   }, f);
   await page.waitForTimeout(100);
@@ -84,58 +91,88 @@ async function answer(page: Page) {
     if (x.type === 'tippen') {
       const i = document.querySelector('input.slot') as HTMLInputElement;
       i.value = x.answer; i.dispatchEvent(new Event('input', { bubbles: true })); await sleep(50);
-      [...document.querySelectorAll('button')].find((b) => b.textContent === 'Prüfen')!.click(); await sleep(300); return;
+      [...document.querySelectorAll('button')].find((b) => /^(Check|Prüfen)$/.test(b.textContent ?? ''))!.click(); await sleep(300); return;
     }
     if (x.type === 'reihenfolge') {
       for (const t of x.answer.split(' ')) {
         [...document.querySelectorAll<HTMLButtonElement>('.chips .chip')].find((b) => !b.classList.contains('used') && b.textContent === t)?.click();
         await sleep(20);
       }
-      [...document.querySelectorAll('button')].find((b) => b.textContent === 'Prüfen')!.click(); await sleep(300); return;
+      [...document.querySelectorAll('button')].find((b) => /^(Check|Prüfen)$/.test(b.textContent ?? ''))!.click(); await sleep(300); return;
     }
     [...document.querySelectorAll<HTMLElement>('.tag')].find((t) => t.textContent!.trim() === x.answer)?.click();
     await sleep(1300);
   });
 }
 
-for (const [w, h] of SIZES) {
-  for (const scale of [1, 1.3]) {
-    for (const type of TYPES) {
-      test(`${type} at ${w}x${h}, text ${scale * 100}%`, async ({ page }) => {
-        await page.setViewportSize({ width: w, height: h });
-        await open(page, `/?sheet=stress&force=${type}&pick=longest`);
-        if (scale !== 1) await scaleText(page, scale);
-        expect(await audit(page), 'before answering').toEqual([]);
-        await answer(page);
-        expect(await audit(page), 'after answering').toEqual([]);
-      });
+for (const lang of Object.keys(LANGS) as Lang[]) {
+  for (const theme of THEMES) {
+    for (const [w, h] of SIZES) {
+      for (const scale of [1, 1.3]) {
+        test(`all types, ${lang}, ${theme}, ${w}x${h}, text ${scale * 100}%`, async ({ page }) => {
+          await page.setViewportSize({ width: w, height: h });
+          for (const type of TYPES) {
+            await open(page, `/?sheet=stress&force=${type}&pick=longest&lang=${lang}&theme=${theme}`);
+            if (scale !== 1) await scaleText(page, scale);
+            expect(await audit(page), `${type} before answering`).toEqual([]);
+            await answer(page);
+            expect(await audit(page), `${type} after answering`).toEqual([]);
+          }
+        });
+      }
     }
   }
 }
 
-for (const theme of ['dark']) {
-  test(`all types in ${theme} at 320x600`, async ({ page }) => {
-    await page.setViewportSize({ width: 320, height: 600 });
-    for (const type of TYPES) {
-      await open(page, `/?sheet=stress&force=${type}&pick=longest&theme=${theme}`);
-      expect(await audit(page), type).toEqual([]);
-    }
-  });
+/** Clicks through the screens around a run and audits each one. */
+async function screens(page: Page, lang: Lang, scale: number, demo: boolean) {
+  const L = LANGS[lang];
+  const q = `/?${demo ? "demo" : "sheet=stress500&tabs=1"}&force=bedeutung&lang=${lang}`; // one answered card, then the summary
+  const out: Array<[string, string[]]> = [];
+  const check = async (name: string) => { if (scale !== 1) await scaleText(page, scale); out.push([name, await audit(page)]); };
+  await open(page, q);
+  await answer(page);
+  await page.getByRole('button', { name: L['common.done'], exact: true }).click();
+  await page.waitForSelector('.sum');
+  await check('summary');
+  await page.locator('.act').getByRole('button', { name: L['common.done'], exact: true }).click();
+  await page.waitForSelector('.end');
+  await check('end');
+  await page.getByRole('button', { name: L['nav.settings'] }).first().click();
+  await page.waitForSelector('.page');
+  await check('settings');
+  await page.getByRole('button', { name: new RegExp(L['set.page.daten']) }).click();
+  await page.waitForSelector('.page');
+  await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+  await check('data');
+  return out;
 }
 
-test('other screens on 500 rows at 320x600: end, Verlauf, Einstellungen > Daten', async ({ page }) => {
+for (const lang of Object.keys(LANGS) as Lang[]) {
+  for (const theme of THEMES) {
+    for (const [w, h] of SIZES) {
+      for (const scale of [1, 1.3]) {
+        for (const demo of [false, true]) {
+          test(`screens (${demo ? 'demo' : 'connected sheet, 500 rows'}), ${lang}, ${theme}, ${w}x${h}, text ${scale * 100}%`, async ({ page }) => {
+            await page.emulateMedia({ colorScheme: theme });
+            await page.setViewportSize({ width: w, height: h });
+            for (const [name, problems] of await screens(page, lang, scale, demo)) expect(problems, name).toEqual([]);
+          });
+        }
+      }
+    }
+  }
+}
+
+test('Verlauf on 500 rows, both languages, 320x600', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 600 });
-  await open(page, '/?sheet=stress500');
-  await page.getByRole('button', { name: 'Fertig' }).click();
-  expect(await audit(page), 'end').toEqual([]);
-  await page.getByRole('button', { name: 'Verlauf' }).click();
-  await page.waitForSelector('.page');
-  expect(await audit(page), 'verlauf').toEqual([]);
-  await page.getByRole('button', { name: 'Zurück' }).click();
-  await page.getByRole('button', { name: 'Einstellungen' }).click();
-  await page.getByRole('button', { name: /Daten/ }).click();
-  await page.waitForSelector('.page');
-  expect(await audit(page), 'daten').toEqual([]);
+  for (const lang of Object.keys(LANGS) as Lang[]) {
+    await open(page, `/?sheet=stress500&lang=${lang}`);
+    await page.getByRole('button', { name: LANGS[lang]['common.done'], exact: true }).click();
+    await page.getByRole('button', { name: LANGS[lang]['nav.verlauf'] }).first().click();
+    await page.waitForSelector('.page');
+    expect(await audit(page), `verlauf ${lang}`).toEqual([]);
+  }
 });
 
 test('control: the audit does catch overflow, clipping and zone breaks', async ({ page }) => {

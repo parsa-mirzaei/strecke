@@ -7,8 +7,10 @@ import { defineConfig, type Plugin } from 'vite';
 
 const here = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 const pkg = JSON.parse(readFileSync(here('./package.json'), 'utf8')) as { version: string };
-/** Storage namespace; a preview build sets VITE_NS=preview (see src/ns.ts). */
+/** Storage namespace; a preview build sets VITE_NS=preview, the Next channel VITE_NS=next (see src/ns.ts). */
 const NS = process.env.VITE_NS ? `strecke-${process.env.VITE_NS}` : 'strecke';
+/** The Next channel has its own public folder: manifest "Strecke Next" with its own id, amber NEXT icons. */
+const IS_NEXT = NS === 'strecke-next';
 
 /**
  * Content-Security-Policy for the build (A9): scripts only from this origin, and the only hosts the app may
@@ -95,9 +97,20 @@ self.addEventListener('fetch', (e) => {
   }
   e.respondWith(caches.match(req).then((hit) => hit || fetch(req)));
 });
-`;
+${IS_NEXT ? `
+// Self-heal: another app's older service worker on this origin may delete this cache. The page asks
+// after every start; a missing or incomplete shell is fetched again while online.
+self.addEventListener('message', (e) => {
+  if (e.data !== 'heal') return;
+  e.waitUntil(caches.open(CACHE).then(async (c) => {
+    const have = new Set((await c.keys()).map((r) => new URL(r.url).pathname));
+    const missing = PRECACHE.filter((p) => !have.has(new URL(p, self.registration.scope).pathname));
+    if (missing.length) await c.addAll(missing);
+  }).catch(() => {}));
+});
+` : ''}`;
       this.emitFile({ type: 'asset', fileName: 'sw.js', source });
-      if (process.env.VITE_NS) {
+      if (process.env.VITE_NS && !IS_NEXT) {
         // A preview installs as its own app with its own name, next to the live one.
         const manifest = JSON.parse(readFileSync(here('./public/manifest.webmanifest'), 'utf8')) as Record<string, unknown>;
         this.emitFile({ type: 'asset', fileName: 'manifest.webmanifest', source: JSON.stringify({ ...manifest, name: 'Strecke Vorschau', short_name: 'Vorschau', id: `./?app=${NS}` }, null, 2) });
@@ -106,9 +119,15 @@ self.addEventListener('fetch', (e) => {
   };
 }
 
+/** The Next channel's page title, so its tab and task switcher entry never look like the stable app. */
+function channelTitle(): Plugin {
+  return { name: 'strecke-channel-title', transformIndexHtml: (html) => (IS_NEXT ? html.replace('<title>Strecke</title>', '<title>Strecke Next</title>') : html) };
+}
+
 export default defineConfig({
   base: './',
-  plugins: [preact(), serviceWorker(), devSeed(), csp()],
+  publicDir: IS_NEXT ? 'public-next' : 'public',
+  plugins: [preact(), serviceWorker(), devSeed(), csp(), channelTitle()],
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   resolve: { alias: { '@core': here('../core/src') } },
   build: {

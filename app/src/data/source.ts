@@ -37,7 +37,7 @@ export interface Opened {
 /**
  * Which data the app runs on (D46). The UI never asks which one it got.
  *  - A sheet link in the settings: `sheet`, from the last good copy on the device, refreshed in the background.
- *  - Development: `?sheet=stress|stress3|stress500` (committed synthetic fixtures), or the gitignored seed
+ *  - Development: `?sheet=stress|stress3|stress500` (committed synthetic fixtures; `&tabs=1` adds Inbox/Meta), or the gitignored seed
  *    through the same ingestion as a real sheet; `?demo` forces the demo deck.
  *  - Otherwise: `demo`, the bundled synthetic deck.
  */
@@ -49,7 +49,12 @@ export async function openSource(app: AppStore, settings: Settings): Promise<Ope
     const { stressTable, tinyTable, bigTable } = await import('@core/data/stress-sheet.ts');
     const table = which === 'stress3' ? tinyTable() : which === 'stress500' ? bigTable(500) : stressTable();
     const adapter = new SheetAdapter(store, Date.now, `dev-${which}`, log);
-    await adapter.sync({ label: which, read: async () => table });
+    // `&tabs=1`: synthetic Inbox and Meta tabs too (a newer schema_version), so their lines can be audited.
+    const tabs = q.has('tabs') ? {
+      inbox: { label: 'inbox', read: async () => [['word', 'note', 'processed'], ['Schrank', '', ''], ['Fenster', '', '2026-10-10']] },
+      meta: { label: 'meta', read: async () => [['schema_version', '2']] },
+    } : {};
+    await adapter.sync({ label: which, read: async () => table }, tabs);
     return { adapter, source: null };
   }
   const sh = settings.sheet;

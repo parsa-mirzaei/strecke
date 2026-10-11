@@ -25,3 +25,4 @@ app/dist-review/
 app/test-results/
 app/playwright-report/
 app/dist-preview/
+app/dist-next/
