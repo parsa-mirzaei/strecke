@@ -26,16 +26,9 @@ export class ElevenError extends Error {
   }
 }
 
-/** A user-facing German reason; never contains the key. */
-export function explain(e: unknown): string {
-  const code = e instanceof ElevenError ? e.code : 'network';
-  switch (code) {
-    case 'bad_key': return 'Der Schlüssel wurde nicht akzeptiert.';
-    case 'quota': return 'Das Kontingent bei ElevenLabs ist aufgebraucht.';
-    case 'rate': return 'Zu viele Anfragen. Bitte gleich noch einmal versuchen.';
-    case 'network': return 'Keine Verbindung zu ElevenLabs.';
-    default: return 'ElevenLabs hat die Anfrage abgelehnt.';
-  }
+/** Why a request failed, as a code the UI translates (`audio.err.<code>`). Never contains the key. */
+export function explain(e: unknown): ElevenError['code'] {
+  return e instanceof ElevenError ? e.code : 'network';
 }
 
 type Fetch = typeof fetch;

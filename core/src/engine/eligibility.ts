@@ -1,18 +1,20 @@
 /**
  * Which exercises a row's columns allow, and what a thin row would gain from one more column
- * (ENGINE.md "Eligibility"). The hints are for Settings > Daten: help, not a to-do list. Nothing is
+ * (ENGINE.md "Eligibility"). The hints are for Settings > Data: help, not a to-do list. Nothing is
  * ever invented to fill a gap.
  */
 import { capabilities, exercisesFor, EXERCISE_TYPES, pluralUsable, REORDER_WORDS, type ExerciseType } from '../exercises.ts';
 import { collocationSplit } from './distractors.ts';
 import type { WordRecord } from '../record.ts';
 
+export type HintCode = 'article' | 'plural' | 'example' | 'example2' | 'collocation' | 'collocationNoWord' | 'prep' | 'neighbours';
+
 export interface Hint {
   /** The sheet column (or columns) that would unlock more. */
   column: string;
   unlocks: ExerciseType[];
-  /** Short German reason for the UI. */
-  why: string;
+  /** Why, as a code the UI translates (app/src/i18n: `hint.<code>`). */
+  code: HintCode;
 }
 
 export interface RowEligibility {
@@ -48,19 +50,19 @@ export function rowEligibility(w: WordRecord, all: readonly WordRecord[], samePo
   const available = samePos === undefined ? eligibleTypes(w, all) : columnTypes(w, samePos);
   const has = new Set(available);
   const hints: Hint[] = [];
-  const add = (column: string, unlocks: ExerciseType[], why: string) => {
+  const add = (column: string, unlocks: ExerciseType[], code: HintCode) => {
     const missing = unlocks.filter((t) => !has.has(t));
-    if (missing.length) hints.push({ column, unlocks: missing, why });
+    if (missing.length) hints.push({ column, unlocks: missing, code });
   };
-  if (w.pos === 'noun' && !w.article) add('article', ['artikel'], 'Artikel fehlt');
-  if (w.pos === 'noun' && w.article && !w.plural) add('plural', ['plural'], 'Mehrzahl fehlt');
-  if (!w.examples.length) add('example_de, example_en', ['luecke', 'tippen', 'reihenfolge'], 'Beispielsatz fehlt');
-  else if (w.examples.length < 2) add('example_2_de, example_2_en', ['kontext2'], 'Zweiter Beispielsatz fehlt');
-  if (!w.collocation) add('collocation', ['kollokation'], 'Wortverbindung fehlt');
-  else if (!collocationSplit(w)) hints.push({ column: 'collocation', unlocks: ['kollokation'], why: 'Wortverbindung enthält das Wort nicht' });
-  if (!w.prep && (w.pos === 'verb' || w.pos === 'adj')) add('prep', ['praeposition'], 'Präposition fehlt');
+  if (w.pos === 'noun' && !w.article) add('article', ['artikel'], 'article');
+  if (w.pos === 'noun' && w.article && !w.plural) add('plural', ['plural'], 'plural');
+  if (!w.examples.length) add('example_de, example_en', ['luecke', 'tippen', 'reihenfolge'], 'example');
+  else if (w.examples.length < 2) add('example_2_de, example_2_en', ['kontext2'], 'example2');
+  if (!w.collocation) add('collocation', ['kollokation'], 'collocation');
+  else if (!collocationSplit(w)) hints.push({ column: 'collocation', unlocks: ['kollokation'], code: 'collocationNoWord' });
+  if (!w.prep && (w.pos === 'verb' || w.pos === 'adj')) add('prep', ['praeposition'], 'prep');
   // A record with sentences but no choice exercise usually lacks neighbours of the same word class.
-  if (!has.has('bedeutung') && !w.wrong.length) hints.push({ column: 'wrong_1, wrong_2', unlocks: ['bedeutung', 'hoeren'], why: 'zu wenige ähnliche Wörter für Antwortmöglichkeiten' });
+  if (!has.has('bedeutung') && !w.wrong.length) hints.push({ column: 'wrong_1, wrong_2', unlocks: ['bedeutung', 'hoeren'], code: 'neighbours' });
   return { wordId: w.id, de: w.de, available, hints };
 }
 

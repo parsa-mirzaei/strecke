@@ -128,15 +128,14 @@ describe('ElevenLabs client', () => {
     ] })) as unknown as typeof fetch;
     expect((await listVoices('k', f)).map((v) => [v.id, v.german])).toEqual([['a', true], ['b', false]]);
   });
-  it('maps failures to plain German reasons that never contain the key', async () => {
-    for (const [status, text] of [[401, 'Schlüssel'], [402, 'Kontingent'], [429, 'Zu viele'], [500, 'abgelehnt']] as const) {
+  it('maps failures to codes the UI translates; never the key', async () => {
+    for (const [status, code] of [[401, 'bad_key'], [402, 'quota'], [429, 'rate'], [500, 'http']] as const) {
       const f = (async () => new Response('{}', { status })) as unknown as typeof fetch;
-      const msg = await cloud(() => 'SECRET-KEY', f).synth('x', 'v', '').then(() => '', explain);
-      expect(msg).toContain(text);
-      expect(msg).not.toContain('SECRET-KEY');
+      const got = await cloud(() => 'SECRET-KEY', f).synth('x', 'v', '').then(() => '', explain);
+      expect(got).toBe(code);
     }
-    expect(explain(new TypeError('fetch failed'))).toContain('Verbindung');
-    expect(explain(new ElevenError('quota'))).toContain('Kontingent');
+    expect(explain(new TypeError('fetch failed'))).toBe('network');
+    expect(explain(new ElevenError('quota'))).toBe('quota');
   });
   it('a network failure is an error, not a crash', async () => {
     const f = (async () => { throw new TypeError('offline'); }) as unknown as typeof fetch;

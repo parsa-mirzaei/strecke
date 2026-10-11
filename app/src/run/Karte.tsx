@@ -4,13 +4,14 @@ import { splitTarget } from './text';
 import { Icon } from '../ui/Icon';
 import { reducedMotion } from '../lib/haptics';
 import { Chip, EASE, Head, Hint, sizeClass, useFit, type ExerciseProps } from './parts';
+import { t } from '../i18n';
 
 /** The four steps about memory, not difficulty. Rising bars; the colour is the grade colour of the route. */
-const STEPS: Array<{ g: 0 | 1 | 2 | 3; label: string; rating: Rating }> = [
-  { g: 0, label: 'Nicht gewusst', rating: 1 },
-  { g: 1, label: 'Teilweise', rating: 2 },
-  { g: 2, label: 'Gewusst', rating: 3 },
-  { g: 3, label: 'Sofort', rating: 4 },
+const STEPS: Array<{ g: 0 | 1 | 2 | 3; rating: Rating }> = [
+  { g: 0, rating: 1 },
+  { g: 1, rating: 2 },
+  { g: 2, rating: 3 },
+  { g: 3, rating: 4 },
 ];
 const BAR_H = [6, 10, 15, 20];
 
@@ -114,12 +115,12 @@ export function Karte({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
   return (
     <>
       <main class="mid">
-        <section class="card enter" aria-label="Karte">
+        <section lang="de" class="card enter" aria-label={t('kind.karte')}>
           <Head kind="karte" text={x.sentence || w.de} canSpeak={canSpeak} onSpeak={() => speak(x.sentence || w.de, w.id)} />
           <div class="front">
             <Chip w={w} />
             <h1 class="word" ref={wordEl}>{w.de}</h1>
-            {w.plural ? <p class="pl">Pl. {w.plural}</p> : null}
+            {w.plural ? <p class="pl">{t('common.plural', { plural: w.plural })}</p> : null}
             {x.sentence ? (
               <p class={`ex${sizeClass(x.sentence, 90, 150)}`}>{parts ? <>{parts[0]}<u>{parts[1]}</u>{parts[2]}</> : x.sentence}</p>
             ) : null}
@@ -128,7 +129,7 @@ export function Karte({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
             <div class="back" ref={back} aria-hidden={!revealed}>
               <p class={`mean${sizeClass(x.answer, 28, 60)}`} lang="en">{x.answer}</p>
               {(x.sentenceEn || w.collocation || w.note) ? (
-                <button class="more" type="button" aria-expanded={more} onClick={() => setMore(!more)}>{more ? 'Weniger' : 'Mehr'}</button>
+                <button class="more" type="button" aria-expanded={more} onClick={() => setMore(!more)}>{more ? t('common.less') : t('common.more')}</button>
               ) : null}
               <div class="extra" hidden={!more}>
                 {x.sentenceEn ? <p class="tr" lang="en">{x.sentenceEn}</p> : null}
@@ -137,22 +138,22 @@ export function Karte({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exerc
               </div>
             </div>
             <button
-              class="flap" type="button" ref={flap} aria-label="Bedeutung aufdecken" disabled={revealed}
+              class="flap" type="button" ref={flap} aria-label={t('karte.reveal')} disabled={revealed}
               onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={cancel} onClick={click}
             >
-              <span class="flap-inner"><span class="chev"><Icon name="chevron-up" size={26} /></span>Bedeutung aufdecken</span>
+              <span class="flap-inner"><span class="chev"><Icon name="chevron-up" size={26} /></span>{t('karte.reveal')}</span>
               <span class="cut" /><span class="fold" />
             </button>
           </div>
         </section>
       </main>
       <footer class="act enter">
-        <Hint>{!revealed ? 'Weißt du es? Zieh die orange Fläche hoch oder tippe darauf.' : picked === null ? 'Wie gut wusstest du es?' : ''}</Hint>
-        <div class="choices" ref={choices} role="group" aria-label="Wie gut wusstest du es?">
+        <Hint>{!revealed ? t('karte.hintCover') : picked === null ? t('karte.hintRate') : ''}</Hint>
+        <div class="choices" ref={choices} role="group" aria-label={t('karte.hintRate')}>
           {STEPS.map((s, i) => (
             <button key={s.g} class={`ch${picked === i ? ' sel' : ''}`} type="button" data-g={s.g} disabled={!revealed || picked !== null} onClick={() => rate(i)}>
               <span class="st" aria-hidden="true">{BAR_H.map((h, k) => <b key={k} class={k <= s.g ? 'on' : ''} style={{ height: `${h}px` }} />)}</span>
-              <span class="lbl">{s.label}</span>
+              <span class="lbl">{t(`rate.${s.rating}`)}</span>
             </button>
           ))}
         </div>

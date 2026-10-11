@@ -126,7 +126,7 @@ async function open(send, base, query, [w, h], theme) {
   await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: theme }] });
   await send('Page.enable');
   await send('Runtime.enable');
-  await send('Page.navigate', { url: `${base}?demo&theme=${theme}${query ? '&' + query : ''}` });
+  await send('Page.navigate', { url: `${base}?demo&lang=de&theme=${theme}${query ? '&' + query : ''}` });
   for (let i = 0; i < 100; i++) {
     await sleep(100);
     if (await evaluate(send, '!!document.querySelector(".card, .end")')) break;

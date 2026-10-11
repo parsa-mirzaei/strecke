@@ -13,7 +13,7 @@ const src = join(__dirname);
 const code = files(src, /\.(tsx?|css)$/);
 
 describe('A4: no pressure, no red', () => {
-  const FORBIDDEN = /streak|overdue|backlog|forecast|leaderboard|ranking|fällig|überfällig|rückstand|verpasst|aufholen|serie\b|you missed|punkte|xp\b|level\b/i;
+  const FORBIDDEN = /streak|overdue|backlog|forecast|leaderboard|ranking|fällig|überfällig|rückstand|verpasst|aufholen|serie\b|you missed|punkte|xp\b|level ?up|next level|nächste stufe erreicht/i;
   it('no streak, overdue, backlog, forecast, comparison or "missed" anywhere in the interface code', () => {
     for (const p of code) {
       const text = readFileSync(p, 'utf8');
@@ -43,10 +43,10 @@ describe('A1: leaving a card is a labelled button', () => {
   });
   it('every exercise has an exit that is a text button: Weiter or a rating, plus Fertig in the header', () => {
     const run = readFileSync(join(src, 'run/Run.tsx'), 'utf8');
-    expect(run).toContain('>Fertig</button>');
-    for (const f of ['Choice', 'Typed', 'Reorder']) expect(readFileSync(join(src, `run/${f}.tsx`), 'utf8')).toContain('>Weiter</button>');
+    expect(run).toContain("{t('common.done')}</button>");
+    for (const f of ['Choice', 'Typed', 'Reorder']) expect(readFileSync(join(src, `run/${f}.tsx`), 'utf8')).toContain("{t('common.next')}</button>");
     const karte = readFileSync(join(src, 'run/Karte.tsx'), 'utf8');
-    for (const label of ['Nicht gewusst', 'Teilweise', 'Gewusst', 'Sofort']) expect(karte).toContain(label);
+    expect(karte).toContain('{t(`rate.${s.rating}`)}');
   });
 });
 

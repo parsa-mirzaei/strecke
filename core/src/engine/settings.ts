@@ -21,6 +21,8 @@ export interface Settings {
   /** Minutes of inactivity after which the next card starts a new run. */
   runGapMin: number;
   theme: Theme;
+  /** UI language; learning content stays German. */
+  locale: 'en' | 'de';
   haptics: boolean;
   goal: { enabled: boolean; runsPerWeek: number };
   /** The learner's sheet, published as CSV (read-only). Empty = demo words. */
@@ -45,6 +47,7 @@ export const DEFAULT_SETTINGS: Settings = {
   runLength: 6,
   runGapMin: 20,
   theme: 'system',
+  locale: 'en',
   haptics: true,
   goal: { enabled: false, runsPerWeek: 5 },
   sheet: { csvUrl: '' },
@@ -88,6 +91,7 @@ export function parseSettings(raw: unknown): Settings {
     newPerRun: Math.min(int(r.newPerRun, LIMITS.newPerRun, d.newPerRun), runLength),
     runGapMin: int(r.runGapMin, LIMITS.runGapMin, d.runGapMin),
     theme: oneOf(THEMES, r.theme, d.theme),
+    locale: oneOf(['en', 'de'] as const, r.locale, d.locale),
     haptics: typeof r.haptics === 'boolean' ? r.haptics : d.haptics,
     goal: {
       enabled: goal.enabled === true,

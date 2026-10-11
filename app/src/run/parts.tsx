@@ -6,6 +6,7 @@ import type { ExerciseType } from '@core/exercises.ts';
 import type { WordRecord } from '@core/record.ts';
 import { Icon } from '../ui/Icon';
 import { reducedMotion } from '../lib/haptics';
+import { t } from '../i18n';
 
 export const EASE = 'cubic-bezier(.22,.9,.28,1.02)';
 
@@ -29,19 +30,14 @@ export interface ExerciseProps {
 }
 
 /** What the exercise is called on its card: the "what is this" of the 10-second test. */
-export const KIND_LABEL: Record<ExerciseType, string> = {
-  karte: 'Karte', artikel: 'Artikel', plural: 'Plural', bedeutung: 'Bedeutung', luecke: 'Lücke', praeposition: 'Präposition',
-  kollokation: 'Wortverbindung', hoeren: 'Hören', tippen: 'Tippen', reihenfolge: 'Reihenfolge', kontext2: 'Zweiter Kontext',
-};
-
-const POS_LABEL: Record<string, string> = { verb: 'Verb', adj: 'Adj.', phrase: 'Satz', noun: 'Nomen' };
+export const kindLabel = (k: ExerciseType) => t(`kind.${k}`);
 
 export function Head({ kind, text, canSpeak, onSpeak }: { kind: ExerciseType; text?: string; canSpeak: boolean; onSpeak?: () => void }) {
   return (
     <div class="card-head">
-      <span class="kind">{KIND_LABEL[kind]}</span>
+      <span class="kind">{kindLabel(kind)}</span>
       {canSpeak && text && onSpeak ? (
-        <button class="icon-btn" type="button" onClick={onSpeak} aria-label="Vorlesen"><Icon name="volume-2" size={22} /></button>
+        <button class="icon-btn" type="button" onClick={onSpeak} aria-label={t('common.speak')}><Icon name="volume-2" size={22} /></button>
       ) : null}
     </div>
   );
@@ -49,7 +45,7 @@ export function Head({ kind, text, canSpeak, onSpeak }: { kind: ExerciseType; te
 
 /** The small chip before a headword: the article for a noun, else the word class. */
 export function Chip({ w }: { w: WordRecord }) {
-  const label = w.pos === 'noun' ? w.article : POS_LABEL[w.pos] ?? '';
+  const label = w.pos === 'noun' ? w.article : w.pos ? t(`pos.${w.pos}`) : '';
   return label ? <span class="art">{label}</span> : null;
 }
 
@@ -113,7 +109,7 @@ export function Hint({ children }: { children: ComponentChildren }) {
 }
 
 /** Wrong answers get the project's quiet line; right answers a plain confirmation. No praise, no alarm colour. */
-export const SEE_AGAIN = 'Das sehen wir bald wieder.';
+export const seeAgain = () => t('common.seeAgain');
 
 /** Words from the sheet shown in the answer area (English glosses stay as typed). */
 export const CheckMark = () => <Icon name="check" size={22} />;

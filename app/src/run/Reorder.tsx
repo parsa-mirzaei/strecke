@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
-import { Head, Hint, SEE_AGAIN, sizeClass, type ExerciseProps } from './parts';
+import { Head, Hint, seeAgain, sizeClass, type ExerciseProps } from './parts';
+import { t } from '../i18n';
 
 /** Reihenfolge: tap the words in the order of the sentence. Tap a placed word to take it back. */
 export function Reorder({ card, speak, canSpeak, onAnswer, onNext, haptic }: ExerciseProps) {
@@ -29,17 +30,17 @@ export function Reorder({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exe
     onAnswer({ correct: false, help: false, dontKnow: true });
   }
 
-  const hint = !done ? 'Tippe die Wörter in der richtigen Reihenfolge.' : result === 'right' ? 'Richtig.' : `${SEE_AGAIN} So steht es in deinem Beispiel.`;
+  const hint = !done ? t('reorder.ask') : result === 'right' ? t('common.right') : `${seeAgain()} ${t('reorder.shown')}`;
   const shownRight = done && result !== 'right';
 
   return (
     <>
       <main class="mid">
-        <section class="card cl enter" aria-label="Reihenfolge">
+        <section lang="de" class="card cl enter" aria-label={t('kind.reihenfolge')}>
           <Head kind="reihenfolge" text={x.answer} canSpeak={canSpeak && done} onSpeak={() => speak(x.answer, w.id)} />
           <div class="front">
             {x.sentenceEn ? <p class={`q${sizeClass(x.sentenceEn, 60, 110)}`} lang="en">{x.sentenceEn}</p> : null}
-            <div class={`built${result === 'right' ? ' right' : shownRight ? ' shown' : ''}`} aria-label="Dein Satz" aria-live="polite">
+            <div class={`built${result === 'right' ? ' right' : shownRight ? ' shown' : ''}`} aria-label={t('reorder.yours')} aria-live="polite">
               {shownRight
                 ? <p class="shown-text" style={{ margin: 0 }}>{x.answer}</p>
                 : placed.map((i) => (
@@ -51,16 +52,16 @@ export function Reorder({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exe
       </main>
       <footer class="act enter">
         <Hint>{hint}</Hint>
-        <div class="chips" role="group" aria-label="Wörter">
+        <div class="chips" lang="de" role="group" aria-label={t('reorder.words')}>
           {x.tokens.map((t, i) => (
             <button key={i} type="button" class={`chip${placed.includes(i) ? ' used' : ''}`} disabled={done || placed.includes(i)} onClick={() => add(i)}>{t}</button>
           ))}
         </div>
         <div class="pair">
-          <button class="ghost" type="button" disabled={done} onClick={giveUp}>Weiß ich nicht</button>
+          <button class="ghost" type="button" disabled={done} onClick={giveUp}>{t('common.dontKnow')}</button>
           {done
-            ? <button class="primary" type="button" onClick={onNext}>Weiter</button>
-            : <button class="primary" type="button" disabled={!all} onClick={check}>Prüfen</button>}
+            ? <button class="primary" type="button" onClick={onNext}>{t('common.next')}</button>
+            : <button class="primary" type="button" disabled={!all} onClick={check}>{t('common.check')}</button>}
         </div>
       </footer>
     </>

@@ -11,6 +11,7 @@ import { Choice } from './Choice';
 import { Typed } from './Typed';
 import { Reorder } from './Reorder';
 import type { Answer, ExerciseProps } from './parts';
+import { t } from '../i18n';
 
 export type Grade = 0 | 1 | 2 | 3;
 export interface RunState { id: string; no: number; cards: RunCard[] }
@@ -21,7 +22,7 @@ export const gradeOf = (e: LearnEvent): Grade => (ratingFor(e) - 1) as Grade;
 /** The route on top: one stop per card, coloured by how it went. */
 export function Route({ n, cur, results }: { n: number; cur: number; results: Grade[] }) {
   return (
-    <ol class="route" aria-label={`Karte ${Math.min(cur + 1, n)} von ${n}`}>
+    <ol class="route" aria-label={t('run.route', { i: Math.min(cur + 1, n), n })}>
       {Array.from({ length: n }, (_, k) => {
         const cls = k < results.length ? `done g${results[k]}` : k === cur ? 'cur' : '';
         return <li key={k} class={`stop ${cls}`}><i /></li>;
@@ -96,18 +97,18 @@ export function Run({ ctx, run, onFinish, onLeave, onExpire }: {
   }
 
   const props: ExerciseProps = { card, speak, canSpeak: ctx.audio.canListen(), onAnswer, onNext, haptic };
-  const t = card.exercise.type;
-  const body = t === 'karte' ? <Karte key={i} {...props} />
-    : t === 'tippen' ? <Typed key={i} {...props} />
-    : t === 'reihenfolge' ? <Reorder key={i} {...props} />
+  const type = card.exercise.type;
+  const body = type === 'karte' ? <Karte key={i} {...props} />
+    : type === 'tippen' ? <Typed key={i} {...props} />
+    : type === 'reihenfolge' ? <Reorder key={i} {...props} />
     : <Choice key={i} {...props} />;
 
   return (
     <>
       <header class="top">
         <div class="row">
-          <span class="run">Runde {run.no} · {Math.min(i + 1, n)} von {n}</span>
-          <button class="quiet" type="button" onClick={() => onLeave(results$.current)}>Fertig</button>
+          <span class="run">{t('run.label', { no: run.no, i: Math.min(i + 1, n), n })}</span>
+          <button class="quiet" type="button" onClick={() => onLeave(results$.current)}>{t('common.done')}</button>
         </div>
         <Route n={n} cur={i} results={results} />
       </header>

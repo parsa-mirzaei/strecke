@@ -1,19 +1,11 @@
 import { useRef, useState } from 'preact/hooks';
 import type { Exercise, ExerciseType } from '@core/exercises.ts';
 import { splitTarget } from './text';
-import { CheckMark, Chip, Head, Hint, SEE_AGAIN, flyTo, sizeClass, splitGap, useFit, type ExerciseProps } from './parts';
+import { CheckMark, Chip, Head, Hint, seeAgain, flyTo, sizeClass, splitGap, useFit, type ExerciseProps } from './parts';
 import { Icon } from '../ui/Icon';
+import { t } from '../i18n';
 
-const ASK: Partial<Record<ExerciseType, string>> = {
-  artikel: 'Welcher Artikel passt?',
-  plural: 'Wie heißt die Mehrzahl?',
-  bedeutung: 'Was bedeutet das Wort?',
-  luecke: 'Was passt in die Lücke?',
-  kontext2: 'Was passt in die Lücke?',
-  praeposition: 'Welche Präposition passt?',
-  kollokation: 'Welches Wort passt dazu?',
-  hoeren: 'Tippe auf den Lautsprecher. Was bedeutet der Satz?',
-};
+const ASKED: ReadonlySet<ExerciseType> = new Set(['artikel', 'plural', 'bedeutung', 'luecke', 'kontext2', 'praeposition', 'kollokation', 'hoeren']);
 
 /** One component for every exercise that is answered by tapping one of a few options. */
 export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: ExerciseProps) {
@@ -48,7 +40,7 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
   const slotCls = `slot${done ? (ok ? ' right' : ' shown') : ''}`;
   // A plain function, not a component, so the slot element survives re-renders and its colour can transition.
   const slotEl = (wide = false) => (
-    <span class={`${slotCls}${wide ? ' wide' : ''}`} ref={slot} role="img" aria-label={done ? `Antwort: ${x.answer}` : 'Lücke'}>{shown}</span>
+    <span class={`${slotCls}${wide ? ' wide' : ''}`} ref={slot} role="img" aria-label={done ? t('choice.answerIs', { answer: x.answer }) : t('choice.gap')}>{shown}</span>
   );
 
   const [before, after] = splitGap(x.gapped);
@@ -81,7 +73,7 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
         <div class="front">
           <Chip w={w} />
           <h1 class="word" ref={wordEl}>{w.de}</h1>
-          <p class="q" style={{ marginTop: '10px' }}>Pl. {slotEl()}</p>
+          <p class="q" style={{ marginTop: '10px' }}>{t('common.plShort')} {slotEl()}</p>
         </div>
       );
       break;
@@ -98,11 +90,11 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
     case 'hoeren':
       content = (
         <div class="front" style={{ alignItems: 'stretch' }}>
-          <button class="play" type="button" onClick={() => speak(x.sentence || w.de, w.id)} aria-label="Satz anhören" disabled={!canSpeak}>
+          <button class="play" type="button" onClick={() => speak(x.sentence || w.de, w.id)} aria-label={t('choice.listen')} disabled={!canSpeak}>
             <Icon name="volume-2" size={40} />
           </button>
           {textShown ? <p class={`shown-text${sizeClass(x.sentence, 90, 150)}`}>{x.sentence}</p> : (
-            <button class="more" type="button" style={{ alignSelf: 'center' }} onClick={() => setTextShown(true)} disabled={done}>Text zeigen</button>
+            <button class="more" type="button" style={{ alignSelf: 'center' }} onClick={() => setTextShown(true)} disabled={done}>{t('choice.showText')}</button>
           )}
           <div style={{ width: '100%', marginTop: '14px' }}>{slotEl(true)}</div>
         </div>
@@ -112,18 +104,18 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
       content = null;
   }
 
-  const hint = !done ? ASK[x.type] ?? '' : ok ? 'Richtig.' : `${SEE_AGAIN}`;
+  const hint = !done ? (ASKED.has(x.type) ? t(`ask.${x.type}` as 'ask.luecke') : '') : ok ? t('common.right') : seeAgain();
   return (
     <>
       <main class="mid">
-        <section class="card cl enter" aria-label={x.type}>
+        <section lang="de" class="card cl enter" aria-label={x.type}>
           <Head kind={x.type} text={x.type === 'hoeren' ? undefined : x.sentence} canSpeak={canSpeak && x.type !== 'hoeren'} onSpeak={() => speak(x.sentence, w.id)} />
           {content}
         </section>
       </main>
       <footer class="act enter">
         <Hint>{hint}</Hint>
-        <div class="tags" role="group" aria-label="Antworten">
+        <div class="tags" role="group" aria-label={t('choice.options')}>
           {x.options.map((o) => {
             const isRight = done && o === x.answer;
             const isMiss = done && chosen === o && o !== x.answer;
@@ -139,8 +131,8 @@ export function Choice({ card, speak, canSpeak, onAnswer, onNext, haptic }: Exer
           })}
         </div>
         <div class="pair">
-          <button class="ghost" type="button" disabled={done || busy} onClick={giveUp}>Weiß ich nicht</button>
-          <button class="primary" type="button" disabled={!done} onClick={onNext}>Weiter</button>
+          <button class="ghost" type="button" disabled={done || busy} onClick={giveUp}>{t('common.dontKnow')}</button>
+          <button class="primary" type="button" disabled={!done} onClick={onNext}>{t('common.next')}</button>
         </div>
       </footer>
     </>

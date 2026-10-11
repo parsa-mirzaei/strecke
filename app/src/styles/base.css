@@ -321,3 +321,7 @@ details.more-set[open] > summary::before { content: "−"; }
 .plain-list { margin: 4px 0; padding-left: 20px; font: 400 16px/1.4 var(--f-body); }
 .check { display: flex; gap: 10px; align-items: center; min-height: 44px; font: 500 16px var(--f-body); }
 .check input { width: 22px; height: 22px; accent-color: var(--ink); }
+.channel-tag { display: inline-block; margin-left: 8px; padding: 2px 7px; border-radius: 4px; background: var(--amber); color: var(--on-amber); font: 700 11px/1.3 var(--f-body); letter-spacing: .12em; vertical-align: 1px; }
+.channel-note { margin: 4px 0 6px; }
+.source-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; color: var(--ink2); font: 500 15px/1.35 var(--f-body); margin-top: 6px; }
+.link-btn { min-height: 40px; padding: 0; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; font-size: 15px; }

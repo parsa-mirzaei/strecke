@@ -10,6 +10,7 @@ import type { Ctx, Screen } from './appctx';
 import { audio, setAudioSettings, unlockAudio } from './audio/browser';
 import { randomBytes } from './data/source';
 import { setHaptics } from './lib/haptics';
+import { setLocale } from './i18n';
 import { CHANNEL } from './ns';
 import { Run, type Grade, type RunState } from './run/Run';
 import { End, Summary } from './screens/Summary';
@@ -53,6 +54,7 @@ export function App({ adapter, app, snapshot, settings: initial, device: initial
       data.current.settings = s;
       setAudioSettings(s.audio);
       setHaptics(s.haptics);
+      if (!(import.meta.env.DEV && new URLSearchParams(location.search).has('lang'))) setLocale(s.locale);
       applyAppearance(s);
       void saveSettings(app.kv, s);
       rerender();
