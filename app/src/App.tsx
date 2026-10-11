@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import type { DataAdapter, KeyValueStore, Snapshot } from '@core/data/adapter.ts';
+import type { DataAdapter, Snapshot } from '@core/data/adapter.ts';
 import { SheetAdapter, type TableSource } from '@core/data/sheet.ts';
 import { composeRun } from '@core/engine/run.ts';
 import { dashboard } from '@core/engine/stats.ts';
@@ -10,25 +10,38 @@ import type { Ctx, Screen } from './appctx';
 import { audio, setAudioSettings, unlockAudio } from './audio/browser';
 import { randomBytes } from './data/source';
 import { setHaptics } from './lib/haptics';
+import { CHANNEL } from './ns';
 import { Run, type Grade, type RunState } from './run/Run';
 import { End, Summary } from './screens/Summary';
 import { SettingsScreen } from './screens/Settings';
 import { Verlauf } from './screens/Verlauf';
+import { saveDevice, type DeviceInfo } from './state/device';
 import { applyAppearance, saveSettings } from './state/settings';
+import { buildBackup, deliver } from './storage/backup';
+import { requestPersist, shouldAskPersist } from './storage/persist';
+import type { AppStore } from './storage/store';
 import { forcedCards } from './dev';
 
 /**
  * The app shell. It opens straight into the first card of a run: nothing to choose, no count, no
  * start screen. Between runs: the summary, or the calm end. Verlauf and Einstellungen sit one tap away.
+ * The answers of a run are kept in memory and saved together, in one transaction, when the run ends
+ * or the app is hidden; leaving a run midway costs nothing.
  */
-export function App({ adapter, store, snapshot, settings: initial, source = null }: { adapter: DataAdapter; store: KeyValueStore; snapshot: Snapshot; settings: Settings; source?: TableSource | null }) {
+export function App({ adapter, app, snapshot, settings: initial, device: initialDevice, source = null }: {
+  adapter: DataAdapter; app: AppStore; snapshot: Snapshot; settings: Settings; device: DeviceInfo; source?: TableSource | null;
+}) {
   const [, bump] = useState(0);
-  const data = useRef({ ...snapshot, eventIds: new Set(snapshot.events.map((e) => e.id)), events: [...snapshot.events], settings: initial });
+  const data = useRef({
+    ...snapshot, eventIds: new Set(snapshot.events.map((e) => e.id)), events: [...snapshot.events], settings: initial, device: initialDevice, notice: '',
+  });
+  const pending = useRef<LearnEvent[]>([]);
+  const askedPersist = useRef(false);
   const rerender = () => bump((n) => n + 1);
 
   const ctx: Ctx = useMemo(() => ({
     adapter,
-    store,
+    app,
     get words() { return data.current.words; },
     get suspended() { return data.current.suspended; },
     get config() { return data.current.config; },
@@ -41,17 +54,70 @@ export function App({ adapter, store, snapshot, settings: initial, source = null
       setAudioSettings(s.audio);
       setHaptics(s.haptics);
       applyAppearance(s);
-      void saveSettings(store, s);
+      void saveSettings(app.kv, s);
       rerender();
     },
     audio,
     record(e: LearnEvent) {
       data.current.events.push(e);
-      adapter.appendEvents([e]).catch((err) => console.warn('answer not saved', err));
+      pending.current.push(e);
     },
+    async flush() {
+      if (!pending.current.length) return;
+      const batch = pending.current;
+      pending.current = [];
+      try {
+        await adapter.appendEvents(batch);
+      } catch (err) {
+        pending.current = [...batch, ...pending.current]; // kept for the next try, never dropped
+        console.warn('answers not saved yet', err);
+      }
+    },
+    async discardRun(runId: string) {
+      await ctx.flush();
+      const ids = data.current.events.filter((e) => e.run === runId).map((e) => e.id);
+      data.current.events = data.current.events.filter((e) => e.run !== runId);
+      ids.forEach((id) => data.current.eventIds.delete(id));
+      await adapter.removeEvents?.(ids);
+      const d = data.current.device;
+      if (d.completedRuns > 0) ctx.setDevice({ completedRuns: d.completedRuns - 1, runsSinceBackup: Math.max(0, d.runsSinceBackup - 1) });
+      rerender();
+    },
+    async runCompleted() {
+      await ctx.flush();
+      const d = data.current.device;
+      ctx.setDevice({ completedRuns: d.completedRuns + 1, runsSinceBackup: d.runsSinceBackup + 1 });
+      if (shouldAskPersist(d.completedRuns + 1, d.persist ?? 'not-protected', askedPersist.current)) {
+        askedPersist.current = true;
+        ctx.setDevice({ persist: await requestPersist() });
+      }
+    },
+    get device() { return data.current.device; },
+    setDevice(patch: Partial<DeviceInfo>) {
+      data.current.device = { ...data.current.device, ...patch };
+      void saveDevice(app.kv, data.current.device);
+      rerender();
+    },
+    async backupNow() {
+      await ctx.flush();
+      const how = await deliver(buildBackup(data.current.settings, data.current.events, Date.now(), CHANNEL));
+      if (how !== 'cancelled') ctx.setDevice({ lastBackupAt: Date.now(), runsSinceBackup: 0, backupHintShown: true });
+      return how;
+    },
+    async restore(d, withSettings) {
+      await ctx.flush();
+      if (d.fresh.length) await adapter.appendEvents(d.fresh);
+      const sheetChanged = withSettings && JSON.stringify(d.settings.sheet) !== JSON.stringify(data.current.settings.sheet);
+      if (withSettings) ctx.setSettings(d.settings);
+      if (sheetChanged) { location.reload(); return; }
+      await ctx.reload();
+    },
+    get notice() { return data.current.notice; },
+    setNotice(text: string) { data.current.notice = text; rerender(); },
     async reload() {
+      await ctx.flush();
       const fresh = await adapter.load();
-      data.current = { ...fresh, eventIds: new Set(fresh.events.map((e) => e.id)), events: [...fresh.events], settings: data.current.settings };
+      data.current = { ...data.current, ...fresh, eventIds: new Set(fresh.events.map((e) => e.id)), events: [...fresh.events] };
       rerender();
     },
     get sourceInfo() { return data.current.source; },
@@ -63,7 +129,15 @@ export function App({ adapter, store, snapshot, settings: initial, source = null
       await ctx.reload();
       return res;
     },
-  }), [adapter, store, source]);
+  }), [adapter, app, source]);
+
+  // Hidden (another app, the lock screen): save what has been answered.
+  useEffect(() => {
+    const save = () => { if (document.visibilityState === 'hidden') void ctx.flush(); };
+    document.addEventListener('visibilitychange', save);
+    addEventListener('pagehide', save);
+    return () => { document.removeEventListener('visibilitychange', save); removeEventListener('pagehide', save); };
+  }, []);
 
   // Background sync on open: practice starts from the device's copy; new or edited rows arrive quietly
   // and are used from the next run on.
@@ -134,15 +208,19 @@ export function App({ adapter, store, snapshot, settings: initial, source = null
           key={run.id}
           ctx={ctx}
           run={run}
-          onFinish={(r) => { setResults(r); setScreen('summary'); }}
-          onLeave={(r) => { setResults(r); setScreen(r.length ? 'summary' : 'end'); }}
-          onExpire={newRun}
+          onFinish={(r) => { setResults(r); setScreen('summary'); void ctx.runCompleted(); }}
+          onLeave={(r) => { setResults(r); setScreen(r.length ? 'summary' : 'end'); if (r.length) void ctx.runCompleted(); }}
+          onExpire={() => { void ctx.runCompleted(); newRun(); }}
         />
       ) : null}
       {screen === 'summary' && run ? (
-        <Summary ctx={ctx} no={run.no} results={results} onAgain={newRun} onDone={() => setScreen('end')} onVerlauf={() => go('verlauf')} />
+        <Summary
+          ctx={ctx} no={run.no} results={results} onAgain={newRun} onDone={() => setScreen('end')} onVerlauf={() => go('verlauf')}
+          onDiscard={async () => { await ctx.discardRun(run.id); ctx.setNotice('discarded'); setScreen('end'); }}
+          onBackup={() => go('settings')}
+        />
       ) : null}
-      {screen === 'end' ? <End nothing={nothing} onStart={newRun} onVerlauf={() => go('verlauf')} onSettings={() => go('settings')} /> : null}
+      {screen === 'end' ? <End ctx={ctx} nothing={nothing} onStart={newRun} onVerlauf={() => go('verlauf')} onSettings={() => go('settings')} /> : null}
       {screen === 'verlauf' ? <Verlauf ctx={ctx} onBack={leave} onPractice={practice} /> : null}
       {screen === 'settings' ? <SettingsScreen ctx={ctx} onBack={leave} /> : null}
     </>

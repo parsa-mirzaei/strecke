@@ -1,9 +1,9 @@
-import type { DataAdapter, KeyValueStore } from '@core/data/adapter.ts';
+import type { DataAdapter } from '@core/data/adapter.ts';
+import type { AppStore } from '../storage/store';
 import { DemoAdapter } from '@core/data/demo.ts';
 import { SheetAdapter, type TableSource } from '@core/data/sheet.ts';
 import { parseCsv } from '@core/csv.ts';
 import type { Settings } from '@core/engine/settings.ts';
-import { clearStore } from './idb';
 
 export const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n));
 
@@ -39,31 +39,28 @@ export interface Opened {
  *    through the same ingestion as a real sheet; `?demo` forces the demo deck.
  *  - Otherwise: `demo`, the bundled synthetic deck.
  */
-export async function openSource(store: KeyValueStore, settings: Settings): Promise<Opened> {
+export async function openSource(app: AppStore, settings: Settings): Promise<Opened> {
   const q = new URLSearchParams(location.search);
-  if (import.meta.env.DEV && q.has('reset')) {
-    await clearStore();
-    history.replaceState(null, '', location.pathname);
-  }
+  const store = app.kv, log = app.events;
   if (import.meta.env.DEV && q.has('sheet')) {
     const which = q.get('sheet')!;
     const { stressTable, tinyTable, bigTable } = await import('@core/data/stress-sheet.ts');
     const table = which === 'stress3' ? tinyTable() : which === 'stress500' ? bigTable(500) : stressTable();
-    const adapter = new SheetAdapter(store, Date.now, `dev-${which}`);
+    const adapter = new SheetAdapter(store, Date.now, `dev-${which}`, log);
     await adapter.sync({ label: which, read: async () => table });
     return { adapter, source: null };
   }
-  if (settings.sheet.csvUrl) return { adapter: new SheetAdapter(store), source: csvUrlSource(settings.sheet.csvUrl) };
+  if (settings.sheet.csvUrl) return { adapter: new SheetAdapter(store, Date.now, '', log), source: csvUrlSource(settings.sheet.csvUrl) };
   if (import.meta.env.DEV && !q.has('demo')) {
     const res = await fetch('/__dev/seed.csv', { cache: 'no-store' }).catch(() => null);
     if (res?.ok) {
-      const adapter = new SheetAdapter(store, Date.now, 'dev-seed');
+      const adapter = new SheetAdapter(store, Date.now, 'dev-seed', log);
       const text = await res.text();
       await adapter.sync(csvTextSource(text, 'seed'));
       return { adapter, source: null };
     }
   }
-  const demo = new DemoAdapter(store);
+  const demo = new DemoAdapter(store, undefined, log);
   // Development: `?log=3d|30d|spiky` fills the demo deck with a simulated history (Verlauf checks).
   if (import.meta.env.DEV && q.has('log') && !(await demo.load()).events.length) {
     const { syntheticLog, shapeCards } = await import('@core/sim/log.ts');

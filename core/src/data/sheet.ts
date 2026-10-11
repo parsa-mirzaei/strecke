@@ -7,7 +7,7 @@
 import { toWordRecord } from '../record.ts';
 import { DEFAULT_CONFIG, type LearnEvent } from '../scheduler.ts';
 import { emptyLibrary, ingest, introductionOrder, type IngestReport, type Library } from '../sheet/ingest.ts';
-import type { DataAdapter, KeyValueStore, Snapshot, SourceInfo, WordStatusChange } from './adapter.ts';
+import type { DataAdapter, EventLog, KeyValueStore, Snapshot, SourceInfo, WordStatusChange } from './adapter.ts';
 
 /** Where the table comes from: a published CSV link, an uploaded file, the dev seed, a test fake. */
 export interface TableSource {
@@ -35,10 +35,14 @@ export class SheetAdapter implements DataAdapter {
   private store: KeyValueStore;
   private now: () => number;
   private keys: { lib: string; log: string };
-  constructor(store: KeyValueStore, now: () => number = Date.now, namespace = '') {
+  private events: EventLog | undefined;
+  private logName: string;
+  constructor(store: KeyValueStore, now: () => number = Date.now, namespace = '', events?: EventLog) {
     this.store = store;
     this.now = now;
     this.keys = keysFor(namespace);
+    this.events = events;
+    this.logName = namespace ? `sheet.${namespace}` : 'sheet';
   }
 
   async library(): Promise<Library> {
@@ -59,7 +63,7 @@ export class SheetAdapter implements DataAdapter {
     return {
       words: records.filter((w) => w.status === 'active' || w.status === 'pending'),
       suspended: records.filter((w) => w.status === 'suspended'),
-      events: log.events,
+      events: this.events ? await this.events.load(this.logName) : log.events,
       config: DEFAULT_CONFIG,
       source,
     };
@@ -91,10 +95,19 @@ export class SheetAdapter implements DataAdapter {
   }
 
   async appendEvents(events: readonly LearnEvent[]): Promise<void> {
+    if (this.events) { await this.events.append(this.logName, events); return; }
     const log = await this.log();
     const have = new Set(log.events.map((e) => e.id));
     for (const e of events) if (!have.has(e.id)) { have.add(e.id); log.events.push(e); }
     if (log.events.length > MAX_EVENTS) log.events.splice(0, log.events.length - MAX_EVENTS);
+    await this.store.set(this.keys.log, log);
+  }
+
+  async removeEvents(ids: readonly string[]): Promise<void> {
+    if (this.events) { await this.events.remove(this.logName, ids); return; }
+    const log = await this.log();
+    const drop = new Set(ids);
+    log.events = log.events.filter((e) => !drop.has(e.id));
     await this.store.set(this.keys.log, log);
   }
 

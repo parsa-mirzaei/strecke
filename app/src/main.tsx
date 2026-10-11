@@ -3,18 +3,25 @@ import './styles/fonts.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import { openSource } from './data/source';
-import { openStore } from './data/idb';
+import { clearStore } from './data/idb';
+import { NS } from './ns';
+import { loadDevice } from './state/device';
+import { openAppStore } from './storage/store';
 import { App } from './App';
 import { applyAppearance, loadSettings } from './state/settings';
 
 // Open straight into the first card, rendered from the device (IndexedDB); nothing waits on a network.
 (async () => {
-  const store = await openStore();
-  const settings = await loadSettings(store);
+  if (import.meta.env.DEV && new URLSearchParams(location.search).has('reset')) {
+    await clearStore();
+    history.replaceState(null, '', location.pathname);
+  }
+  const app = await openAppStore(NS);
+  const [settings, device] = await Promise.all([loadSettings(app.kv), loadDevice(app.kv)]);
   applyAppearance(settings);
-  const { adapter, source } = await openSource(store, settings);
+  const { adapter, source } = await openSource(app, settings);
   const snapshot = await adapter.load();
-  render(<App adapter={adapter} store={store} snapshot={snapshot} settings={settings} source={source} />, document.getElementById('app')!);
+  render(<App adapter={adapter} app={app} snapshot={snapshot} settings={settings} device={device} source={source} />, document.getElementById('app')!);
 })().catch((err) => {
   console.error(err);
   document.getElementById('app')!.textContent = 'Strecke konnte nicht starten. Bitte neu laden.';

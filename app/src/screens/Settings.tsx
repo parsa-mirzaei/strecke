@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import type { ComponentChildren } from 'preact';
 import { EXERCISE_TYPES, type ExerciseType } from '@core/exercises.ts';
 import { thinRows } from '@core/engine/eligibility.ts';
-import { LIMITS, makeExport, parseSettings, readExport, type Settings } from '@core/engine/settings.ts';
-import { eventFromRow, eventToRow } from '@core/scheduler.ts';
+import { LIMITS, parseSettings, type Settings } from '@core/engine/settings.ts';
 import type { Ctx } from '../appctx';
 import { audio, audioCache, charsToday, keystore, unlockAudio } from '../audio/browser';
 import { estimateChars } from '../audio/service';
@@ -13,8 +12,9 @@ import { clearStore } from '../data/idb';
 import { KIND_LABEL } from '../run/parts';
 import { Icon } from '../ui/Icon';
 import { LICENCES } from './licences';
-import { NS } from '../ns';
+import { LS_PREFIX } from '../ns';
 import { SheetSection } from './SheetSection';
+import { StorageSection } from './StorageSection';
 
 type Page = 'uebungen' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
 
@@ -210,19 +210,7 @@ function AudioGroup({ ctx, set }: { ctx: Ctx; set: (f: (s: Settings) => Settings
   );
 }
 
-function download(name: string, text: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 function Daten({ ctx }: { ctx: Ctx }) {
-  const [msg, setMsg] = useState('');
   const [confirm, setConfirm] = useState(false);
   const thin = useMemo(() => thinRows(ctx.words), [ctx.words]);
   const colName: Record<string, string> = {
@@ -230,29 +218,11 @@ function Daten({ ctx }: { ctx: Ctx }) {
     prep: 'Präposition', article: 'Artikel', 'wrong_1, wrong_2': 'Falsche Antworten',
   };
 
-  function exportAll() {
-    const text = JSON.stringify(makeExport(ctx.settings, ctx.events.map((e) => eventToRow(e)), Date.now()), null, 2);
-    download(`strecke-sicherung-${new Date().toISOString().slice(0, 10)}.json`, text);
-    setMsg(`${ctx.events.length} Antworten und die Einstellungen exportiert. Der Audio-Schlüssel ist nicht enthalten.`);
-  }
-
-  async function importFile(file: File | undefined) {
-    if (!file) return;
-    const res = readExport(await file.text(), (x) => eventFromRow(x as Record<string, string>) !== null);
-    if (!res.ok) { setMsg(res.error === 'not_json' ? 'Das ist keine gültige Datei.' : res.error === 'unknown_version' ? 'Diese Sicherung stammt aus einer anderen Version.' : 'Das ist keine Strecke-Sicherung.'); return; }
-    const events = res.events.map((r) => eventFromRow(r as Record<string, string>)).filter((e): e is NonNullable<typeof e> => !!e);
-    const known = new Set(ctx.words.map((w) => w.id));
-    await ctx.adapter.appendEvents(events);
-    ctx.setSettings(res.settings);
-    await ctx.reload();
-    const skipped = events.filter((e) => !known.has(e.wordId)).length;
-    setMsg(`${events.length} Antworten eingelesen${skipped ? `, davon ${skipped} zu Wörtern, die es hier nicht gibt` : ''}. Einstellungen übernommen.`);
-  }
-
   async function reset() {
+    ctx.app.close();
     await clearStore();
     await audioCache.clear();
-    try { Object.keys(localStorage).filter((k) => k.startsWith(`${NS}.`)).forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ }
+    try { Object.keys(localStorage).filter((k) => k.startsWith(LS_PREFIX)).forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ }
     location.reload();
   }
 
@@ -282,12 +252,8 @@ function Daten({ ctx }: { ctx: Ctx }) {
         </>
       )}
 
-      <p class="kicker">Sicherung</p>
-      <div class="btn-row">
-        <button class="small-btn" type="button" onClick={exportAll}><Icon name="download" size={18} />Exportieren</button>
-        <label class="small-btn"><Icon name="upload" size={18} />Importieren<input type="file" accept="application/json,.json" class="sr-only" onChange={(e) => void importFile((e.currentTarget as HTMLInputElement).files?.[0])} /></label>
-      </div>
-      {msg ? <p class="note" role="status">{msg}</p> : null}
+      <StorageSection ctx={ctx} />
+
 
       <More title="Zurücksetzen">
         <p class="note">Löscht alle Antworten, Einstellungen, gespeicherte Audios und den Schlüssel auf diesem Gerät. Deine Wörter im Sheet bleiben unberührt.</p>

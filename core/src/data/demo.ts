@@ -5,7 +5,7 @@
 import { toWordRecord } from '../record.ts';
 import type { Row } from '../schema.ts';
 import { DEFAULT_CONFIG, type LearnEvent } from '../scheduler.ts';
-import type { DataAdapter, KeyValueStore, Snapshot, WordStatusChange } from './adapter.ts';
+import type { DataAdapter, EventLog, KeyValueStore, Snapshot, WordStatusChange } from './adapter.ts';
 import { DEMO_WORDS } from './demo-deck.ts';
 
 const KEY = 'strecke.demo.v1';
@@ -21,9 +21,11 @@ export class DemoAdapter implements DataAdapter {
   readonly kind = 'demo' as const;
   private store: KeyValueStore;
   private deck: readonly Row[];
-  constructor(store: KeyValueStore, deck: readonly Row[] = DEMO_WORDS) {
+  private log: EventLog | undefined;
+  constructor(store: KeyValueStore, deck: readonly Row[] = DEMO_WORDS, log?: EventLog) {
     this.store = store;
     this.deck = deck;
+    this.log = log;
   }
 
   private async read(): Promise<Stored> {
@@ -31,7 +33,8 @@ export class DemoAdapter implements DataAdapter {
   }
 
   async load(): Promise<Snapshot> {
-    const { events, status } = await this.read();
+    const { events: blobEvents, status } = await this.read();
+    const events = this.log ? await this.log.load('demo') : blobEvents;
     const records = this.deck.map((w) => toWordRecord({ ...w, status: status[w.word_id!] ?? w.status ?? 'active' }));
     return {
       words: records.filter((w) => w.status === 'active' || w.status === 'pending'),
@@ -42,10 +45,19 @@ export class DemoAdapter implements DataAdapter {
   }
 
   async appendEvents(events: readonly LearnEvent[]): Promise<void> {
+    if (this.log) { await this.log.append('demo', events); return; }
     const data = await this.read();
     const have = new Set(data.events.map((e) => e.id));
     for (const e of events) if (!have.has(e.id)) { have.add(e.id); data.events.push(e); }
     if (data.events.length > MAX_EVENTS) data.events.splice(0, data.events.length - MAX_EVENTS);
+    await this.store.set(KEY, data);
+  }
+
+  async removeEvents(ids: readonly string[]): Promise<void> {
+    if (this.log) { await this.log.remove('demo', ids); return; }
+    const data = await this.read();
+    const drop = new Set(ids);
+    data.events = data.events.filter((e) => !drop.has(e.id));
     await this.store.set(KEY, data);
   }
 
