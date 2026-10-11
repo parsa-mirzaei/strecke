@@ -232,6 +232,21 @@ export type PickReason = 'reinsert' | 'easy' | 'due' | 'new' | 'practice';
 /** `asGate`: the exercise stands in for a gate this deck cannot build (D55); logged on the event. */
 export interface Pick { word: WordRecord; exercise: Exercise; reason: PickReason; asGate?: boolean }
 
+/**
+ * The gate this deck can actually show (D55). Normally the record's own gate. When none of those
+ * exercises can be built here (a Lücke with no same-form distractors in a small deck), the next
+ * exercise in the gate's fallback chain stands in. Its event is logged with `gate: true`, so a
+ * replay promotes exactly as the live session did, without looking at other words.
+ */
+export function effectiveGate(w: WordRecord, stage: number, exs: readonly Exercise[]): { types: ExerciseType[]; standIn: boolean } {
+  const caps = capabilities(w);
+  const own = gateTypes(stage, caps);
+  const present = new Set(exs.map((x) => x.type));
+  if (!own.length || own.some((t) => present.has(t))) return { types: own, standIn: false };
+  const types = gateTypes(stage, new Set([...caps].filter((t) => present.has(t))));
+  return { types, standIn: types.length > 0 };
+}
+
 /** Preference order at stage 5, rotated by the word's review count. */
 const STAGE5 = ['tippen', 'hoeren', 'kontext2', 'praeposition', 'bedeutung', 'artikel'] as const;
 
@@ -258,7 +273,7 @@ export function chooseExercise(
     }
     return eligible[0]!;
   }
-  const gate = gateTypes(st.stage, capabilities(w));
+  const gate = effectiveGate(w, st.stage, exs).types;
   const gates = eligible.filter((x) => gate.includes(x.type));
   const others = eligible.filter((x) => !gate.includes(x.type) && x.type !== 'karte');
   if (others.length && st.reps % 3 === 2) return others[st.reps % others.length]!;
@@ -290,8 +305,11 @@ export function pickNext(input: PickInput): Pick | null {
   const tryWords = (list: readonly WordRecord[], reason: PickReason, blocked: (id: string) => boolean, ignoreTypeRule = false): Pick | null => {
     for (const w of list) {
       if (blocked(w.id)) continue;
-      const exercise = chooseExercise(w, st(w), exercises.get(w.id) ?? [], session, canListen, ignoreTypeRule);
-      if (exercise) return { word: w, exercise, reason };
+      const exs = exercises.get(w.id) ?? [];
+      const exercise = chooseExercise(w, st(w), exs, session, canListen, ignoreTypeRule);
+      if (!exercise) continue;
+      const g = st(w).stage >= 1 && st(w).stage <= 4 ? effectiveGate(w, st(w).stage, exs) : null;
+      return g?.standIn && g.types.includes(exercise.type) ? { word: w, exercise, reason, asGate: true } : { word: w, exercise, reason };
     }
     return null;
   };

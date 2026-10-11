@@ -307,3 +307,14 @@ The product owner's Round 4 brief asks that no questions be asked: decide, recor
 - **After a run.** When the learner returns, the app re-syncs (D56) and says how many new words arrived. Rows with `source=agent` carry a small `AI`/`KI` tag and can be skipped on this device (stored locally; the app says plainly that it cannot edit the sheet).
 - **Health line.** "Last row added by your AI: <date>" or "No AI rows yet". It is neutral and never red.
 - **Privacy.** The privacy audit now also blocks published-sheet keys (`2PACX-…`). Tests and docs use placeholder addresses only.
+
+**D55 Distractors fill the same inflectional slot; a stand-in gate when a gate cannot be built.**
+- **The problem.** The brief's bad example: *Ich ___ dir das Geld morgen* with *beschwert / ausfüllen / überweise*.
+- **The rule.** Lücke and Zweiter Kontext options must fill the same slot as the answer:
+  - verbs: infinitive, participle (auxiliary-aware), or the same finite ending;
+  - nouns: number, plus gender when a determiner shows it;
+  - adjectives: the same ending.
+- **Too few candidates.** With one fitting form there are two options; with none, the exercise is not generated. The rules are in [ENGINE.md](ENGINE.md).
+- **Stand-in gate.** If that leaves a word without its gate exercise, the next exercise in the gate chain stands in. Its event carries `gate: true`, so the replay stays a pure function of the log and the record's own columns. This replaces the D48 known limit.
+- **Simulator.** `tools/simulate.ts` (synthetic learner, an assumption) reports a Tippen share of 39–41 % for words past the building stage, at 60 and at 300 words. That is above the ~15 % bar, so no change is needed.
+- **Finding for the owner.** The specified picker (due before new) introduces only about 50 words in 60 days at 30 cards a day.

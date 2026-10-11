@@ -3,8 +3,10 @@
  *
  * `exercisesFor(word, allWords)` is pure: the same records always give the same exercises, options
  * and option order. A missing column never fails; it only removes the exercises that need it.
- * Distractors come from other records (same pos, same tier first), never the answer, never twice;
- * an exercise that cannot get two distractors is skipped.
+ * Distractors come from other records (same pos, same tier first), never the answer, never twice.
+ * Meaning options need two distractors or the exercise is skipped. Form options (Lücke, Zweiter
+ * Kontext) must fill the same inflectional slot as the answer (D55): with one such form the exercise
+ * has two options, with none it is skipped and the scheduler lets another exercise stand in for it.
  */
 import { PREPOSITIONS } from './schema.ts';
 import { formCount, type Example, type WordRecord } from './record.ts';
@@ -120,14 +122,81 @@ function meaningOptions(w: WordRecord, all: readonly WordRecord[], type: Exercis
   return d && stableOrder([w.en, ...d], seed, (s) => s);
 }
 
-function formOptions(w: WordRecord, form: string, all: readonly WordRecord[], type: ExerciseType): string[] | null {
+/** Words before a gap that show the noun's gender (and case): a determiner, optionally followed by up to two inflected adjectives ("an der nächsten ___"). */
+const DETERMINER = /(?:^|\s)(der|die|das|den|dem|des|ein|eine|einen|einem|einer|eines|kein|keine|keinen|keinem|keiner|keines|mein|meine|meinen|meinem|meiner|dein|deine|deinen|deinem|deiner|sein|seine|seinen|seinem|seiner|ihr|ihre|ihren|ihrem|ihrer|unser|unsere|unseren|unserem|euer|eure|euren|eurem|dieser|diese|diesen|diesem|dieses|jeder|jede|jeden|jedem|jedes|welcher|welche|welchen|welchem|welches|am|im|zum|zur|vom|beim|ins|ans)(?:\s+\p{Ll}+(?:e|en|er|es|em))?(?:\s+\p{Ll}+(?:e|en|er|es|em))?\s*$/iu;
+const DATIVE_MN = /^(dem|einem|keinem|meinem|deinem|seinem|ihrem|unserem|eurem|diesem|jedem|welchem|am|im|zum|vom|beim)$/;
+const AUX = /(?<![\p{L}])(habe|hast|hat|haben|habt|hatte|hattest|hatten|bin|bist|ist|sind|seid|war|warst|waren|wart|wird|wirst|werden|werdet|wurde|wurden|worden|sein)(?![\p{L}])/iu;
+const SEPARABLE = ['zurück', 'zusammen', 'weiter', 'vorbei', 'nach', 'fest', 'heim', 'weg', 'ab', 'an', 'auf', 'aus', 'bei', 'ein', 'mit', 'vor', 'zu', 'los', 'her', 'hin', 'um'];
+const INSEPARABLE = /^(be|emp|ent|er|ge|miss|ver|zer|über|unter|hinter|wider)/;
+
+/**
+ * The inflectional slot of `form` (the word as it stands in `sentence`) relative to its lemma, so an
+ * option can be required to fit the same slot (D55): conjugated with conjugated (same ending, so the
+ * same person), participle with participle, infinitive with infinitive; for nouns the same number,
+ * and the same gender when a determiner before the gap shows it; for adjectives the same ending.
+ */
+export function formSlot(w: Pick<WordRecord, 'de' | 'pos' | 'article' | 'plural'>, form: string, sentence: string): string {
+  const f = clean(form).toLowerCase();
+  const lemma = clean(w.de).toLowerCase().replace(/^sich\s+/, '');
+  if (w.pos === 'phrase') return 'phrase';
+  if (w.pos === 'noun') {
+    const number = f === lemma ? 'sg' : w.plural && f === clean(w.plural).toLowerCase() ? 'pl' : 'other';
+    if (number === 'pl') return 'noun|pl'; // plural forms share their determiners across genders
+    const det = DETERMINER.exec(blank(sentence, form).split(GAP)[0] ?? '')?.[1]?.toLowerCase();
+    if (!det) return `noun|${number}`;
+    // dem/einem/am/im/zum/vom/beim show masculine or neuter dative: both fit the same gap.
+    const gender = DATIVE_MN.test(det) && (w.article === 'der' || w.article === 'das') ? 'mn' : w.article;
+    return `noun|${gender}|${number}`;
+  }
+  if (w.pos === 'adj') {
+    if (f === lemma) return 'adj|';
+    return f.startsWith(lemma) && /^(e|en|er|es|em)$/.test(f.slice(lemma.length)) ? `adj|${f.slice(lemma.length)}` : 'adj|other';
+  }
+  // verbs
+  if (f === lemma) return 'verb|inf';
+  const sep = SEPARABLE.find((p) => lemma.startsWith(p) && lemma.length > p.length + 3);
+  if (sep && f === sep + 'zu' + lemma.slice(sep.length)) return 'verb|inf';
+  const hasAux = AUX.test(blank(sentence, form).replace(GAP, ' '));
+  if ((sep && f.startsWith(sep + 'ge')) || (f.startsWith('ge') && !lemma.startsWith('ge'))) return 'verb|part';
+  if (hasAux && /(t|en)$/.test(f) && (INSEPARABLE.test(lemma) || lemma.endsWith('ieren') || f.startsWith('ge') || !!sep)) return 'verb|part';
+  for (const end of ['st', 'e', 't', 'en', 'n'] as const) if (f.endsWith(end)) return `verb|${end === 'n' ? 'en' : end}`;
+  return 'verb|other';
+}
+
+function nounNumber(o: Pick<WordRecord, 'de' | 'plural'>, form: string): 'sg' | 'pl' | 'other' {
+  const f = clean(form).toLowerCase();
+  return f === clean(o.de).toLowerCase() ? 'sg' : o.plural && f === clean(o.plural).toLowerCase() ? 'pl' : 'other';
+}
+
+function formOptions(w: WordRecord, ex: Example, all: readonly WordRecord[], type: ExerciseType): string[] | null {
   const seed = `${w.id}|${type}|`;
-  // Forms with the same ending first (kümmere / überlege), so the grammar does not give the answer away.
-  const ending = (s: string) => clean(s).toLowerCase().slice(-2);
-  const pool = candidates(w, all, seed).map((o) => o.examples[0]?.form || o.de)
-    .sort((a, b) => Number(ending(b) === ending(form)) - Number(ending(a) === ending(form)));
-  const d = pickDistinct(form, [], pool);
-  return d && stableOrder([form, ...d], seed, (s) => s);
+  const slot = formSlot(w, ex.form, ex.de);
+  // Does another record's form fill the same slot? Nouns: same number, and the same gender when the
+  // answer's sentence shows it (judged by the candidate's own article). Verbs and adjectives: the same
+  // slot, read in the candidate's own sentence (where an auxiliary marks a participle).
+  const fits = (o: WordRecord, form: string, sentence: string): boolean => {
+    if (w.pos !== 'noun') return formSlot(o, form, sentence) === slot;
+    const parts = slot.split('|');
+    const number = nounNumber(o, form);
+    if (parts[1] === 'pl') return number === 'pl';
+    if (parts.length === 2) return number === parts[1];
+    const gender = parts[1];
+    const theirs = gender === 'mn' && (o.article === 'der' || o.article === 'das') ? 'mn' : o.article;
+    return number === parts[2] && theirs === gender;
+  };
+  const pool: string[] = [];
+  for (const o of candidates(w, all, seed)) {
+    for (const e of o.examples) {
+      const form = e.form || o.de;
+      if (formCount(e.de, form) === 1 && fits(o, form, e.de)) pool.push(form);
+    }
+    const dict = o.de.replace(/^sich\s+/, '');
+    if (fits(o, dict, o.pos === 'verb' ? `${dict}` : dict)) pool.push(dict);
+    if (o.pos === 'noun' && o.plural && fits(o, o.plural, o.plural)) pool.push(o.plural);
+  }
+  // Fewer than two such forms → two options; none → no exercise (the scheduler lets another stand in, D55).
+  const d = pickDistinct(ex.form, [], pool, 2) ?? pickDistinct(ex.form, [], pool, 1);
+  return d && stableOrder([ex.form, ...d], seed, (s) => s);
 }
 
 /** Two other prepositions from the closed list, in a stable per-word order. */
@@ -162,7 +231,7 @@ export function exercisesFor(w: WordRecord, all: readonly WordRecord[]): Exercis
   if (meanings) out.push({ ...base, type: 'bedeutung', answer: w.en, options: meanings });
 
   if (ex0) {
-    const opts = formOptions(w, ex0.form, all, 'luecke');
+    const opts = formOptions(w, ex0, all, 'luecke');
     if (opts) out.push({ ...base, type: 'luecke', answer: ex0.form, options: opts, gapped: blank(ex0.de, ex0.form) });
   }
 
@@ -188,7 +257,7 @@ export function exercisesFor(w: WordRecord, all: readonly WordRecord[]): Exercis
   if (ex0) out.push({ ...base, type: 'tippen', answer: ex0.form, gapped: blank(ex0.de, ex0.form) });
 
   if (ex1) {
-    const opts = formOptions(w, ex1.form, all, 'kontext2');
+    const opts = formOptions(w, ex1, all, 'kontext2');
     if (opts) {
       out.push({
         ...base, type: 'kontext2', answer: ex1.form, options: opts, gapped: blank(ex1.de, ex1.form),
