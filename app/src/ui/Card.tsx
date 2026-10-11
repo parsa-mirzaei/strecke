@@ -19,6 +19,8 @@ export interface CardProps {
   stage: number;
   canListen: boolean;
   haptics: boolean;
+  /** The mono label top left: the situation or the sheet's topic. */
+  label: string;
   /** Small mono tags in the label strip (DEMO, AI, …). */
   tags: string[];
   /** The source line on the first card of a visit (demo vs sheet). */
@@ -29,10 +31,6 @@ export interface CardProps {
   onDone: () => void;
   onSkipWord?: () => void;
 }
-
-const DOMAIN_KEY: Record<string, StringKey> = {
-  arbeit: 'domain.arbeit', uni: 'domain.uni', amt: 'domain.amt', alltag: 'domain.alltag', smalltalk: 'domain.smalltalk',
-};
 
 function buzz(on: boolean, pattern: number | number[]) {
   if (on && typeof navigator !== 'undefined' && 'vibrate' in navigator) navigator.vibrate(pattern);
@@ -311,7 +309,7 @@ export function Card(p: CardProps) {
   return (
     <article class={`card card-${x.type}`} aria-live="off">
       <header class="strip">
-        <span class="label">{word.domain ? t(DOMAIN_KEY[word.domain]!) : t('label.word')}</span>
+        <span class="label">{p.label}</span>
         {p.tags.map((tag) => <span class="label is-tag" key={tag}>{tag}</span>)}
         {(x.type === 'karte' || answered) && <Speak text={word.article ? `${word.article} ${word.de}` : word.de} enabled={p.canListen} />}
       </header>

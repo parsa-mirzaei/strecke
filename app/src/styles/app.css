@@ -703,3 +703,71 @@ svg {
     transform: none;
   }
 }
+
+/* ------------------------------------------------------------------ settings: data source */
+
+.connect {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+.field input,
+.field textarea,
+.field select {
+  width: 100%;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 16px; /* never smaller: phones zoom into smaller inputs */
+  font-weight: 400;
+}
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+details > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+  list-style-position: inside;
+}
+details > summary::-webkit-details-marker {
+  margin-right: 8px;
+}
+.guide ol {
+  margin: 0 0 8px;
+  padding-left: 1.4em;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.warning {
+  margin: 0;
+  padding: 12px 14px;
+  border-left: 4px solid var(--signal-edge);
+  background: var(--paper-2);
+  border-radius: 0 6px 6px 0;
+}
+.attention ul {
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.attention li {
+  overflow-wrap: anywhere;
+}

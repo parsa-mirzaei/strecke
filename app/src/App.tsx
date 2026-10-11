@@ -68,10 +68,11 @@ export function App({ boot, content, dataSource, fillMyList, onSkipWord, notice,
   const visit = useRef({ cards: 0, answered: 0, askedPersist: false });
   const firstCardOfVisit = visit.current.cards === 0;
 
-  // New content (a sync brought rows, a word was skipped): rebuild the engine's view, keep the card.
+  // New content (a sync brought rows, a word was skipped, the source changed): rebuild the engine's
+  // view. The card on screen stays until Next, so a message on it can still be read.
   useEffect(() => {
     practice.setWords(content.words);
-    if (!pick || !practice.word(pick.word.id)) setPick(practice.next(Date.now(), canListen));
+    if (!pick) setPick(practice.next(Date.now(), canListen));
   }, [content.words]);
 
   useEffect(() => {
@@ -200,6 +201,7 @@ export function App({ boot, content, dataSource, fillMyList, onSkipWord, notice,
           stage={st?.stage ?? 0}
           canListen={canListen}
           haptics={prefs.haptics}
+          label={content.labelFor(pick.word)}
           tags={content.tagsFor(pick.word)}
           sourceLine={firstCardOfVisit ? sourceLine : undefined}
           inviteAloud={visit.current.cards >= 1 && visit.current.cards % 7 === 3}

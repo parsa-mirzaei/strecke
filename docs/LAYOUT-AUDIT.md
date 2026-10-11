@@ -20,4 +20,6 @@ Desktop emulation is not evidence for feel, timing, safe areas or the on-screen 
 | --- | --- | --- | --- |
 | Slice 2 | 160 | 0 | The first run flagged one item, the *Connect your sheet* link at 43 px tall; fixed (min-height 44 px) |
 
+| Slice 3 | 160 | 0 | Settings › Data now has the connect form (guide, link fields, CSV fallback) |
+
 Later runs are added below as the screens grow.

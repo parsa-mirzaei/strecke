@@ -1,8 +1,9 @@
 /**
  * Minimal RFC 4180 CSV: quoted fields, doubled quotes, commas and line breaks inside quotes, CRLF or LF.
  * A UTF-8 byte-order mark at the start is dropped. No type coercion: every cell is a string.
+ * Rows with no content are dropped unless `keepEmpty` is set.
  */
-export function parseCsv(text: string): string[][] {
+export function parseCsv(text: string, opts: { keepEmpty?: boolean } = {}): string[][] {
   const src = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
   const rows: string[][] = [];
   let row: string[] = [], cell = '', quoted = false;
@@ -21,7 +22,8 @@ export function parseCsv(text: string): string[][] {
   }
   if (quoted) throw new Error('csv_unterminated_quote');
   if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
-  return rows.filter((r) => r.some((c) => c !== ''));
+  // keepEmpty: row numbers then match the spreadsheet's (the sheet reader reports "Row 12").
+  return opts.keepEmpty ? rows : rows.filter((r) => r.some((c) => c !== ''));
 }
 
 export function toCsv(rows: readonly (readonly string[])[]): string {
