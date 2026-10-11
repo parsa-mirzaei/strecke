@@ -1,7 +1,7 @@
 import type { DataAdapter } from '@core/data/adapter.ts';
 import type { AppStore } from '../storage/store';
 import { DemoAdapter } from '@core/data/demo.ts';
-import { SheetAdapter, type TableSource } from '@core/data/sheet.ts';
+import { SheetAdapter, type OptionalTabs, type TableSource } from '@core/data/sheet.ts';
 import { parseCsv } from '@core/csv.ts';
 import type { Settings } from '@core/engine/settings.ts';
 
@@ -16,20 +16,22 @@ export function csvUrlSource(url: string): TableSource {
       if (!res.ok) throw new Error(`http_${res.status}`);
       const text = await res.text();
       if (/^\s*<(!doctype|html)/i.test(text)) throw new Error('not_csv');
-      return parseCsv(text);
+      return parseCsv(text, { keepEmpty: true }); // keeps the spreadsheet's own row numbers in notes
     },
   };
 }
 
 /** A CSV file the learner picks (a one-off import, also offline). */
-export function csvTextSource(text: string, label = 'CSV-Datei'): TableSource {
-  return { label, read: async () => parseCsv(text) };
+export function csvTextSource(text: string, label = 'CSV file'): TableSource {
+  return { label, read: async () => parseCsv(text, { keepEmpty: true }) };
 }
 
 export interface Opened {
   adapter: DataAdapter;
-  /** Where a background sync reads from; null for demo. */
+  /** Where a background sync reads from; null for demo and for a sheet read from a file. */
   source: TableSource | null;
+  /** The optional Inbox and Meta tabs, read along with the words. */
+  tabs?: OptionalTabs;
 }
 
 /**
@@ -50,7 +52,16 @@ export async function openSource(app: AppStore, settings: Settings): Promise<Ope
     await adapter.sync({ label: which, read: async () => table });
     return { adapter, source: null };
   }
-  if (settings.sheet.csvUrl) return { adapter: new SheetAdapter(store, Date.now, '', log), source: csvUrlSource(settings.sheet.csvUrl) };
+  const sh = settings.sheet;
+  if (sh.csvUrl) {
+    return {
+      adapter: new SheetAdapter(store, Date.now, '', log),
+      source: csvUrlSource(sh.csvUrl),
+      tabs: { inbox: sh.inboxUrl ? csvUrlSource(sh.inboxUrl) : null, meta: sh.metaUrl ? csvUrlSource(sh.metaUrl) : null },
+    };
+  }
+  // Words read from a CSV file: the same library, refreshed only when the learner picks a newer file.
+  if (sh.fileName) return { adapter: new SheetAdapter(store, Date.now, '', log), source: null };
   if (import.meta.env.DEV && !q.has('demo')) {
     const res = await fetch('/__dev/seed.csv', { cache: 'no-store' }).catch(() => null);
     if (res?.ok) {

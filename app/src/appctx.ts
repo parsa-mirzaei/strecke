@@ -43,7 +43,7 @@ export interface Ctx {
   sourceInfo: SourceInfo | undefined;
   /** The configured sheet, if any. */
   source: TableSource | null;
-  /** Read the sheet now (or the given source) and reload; never throws. */
+  /** Read the sheet now (or the given source, e.g. a picked file) and reload; never throws. */
   sync(from?: TableSource): Promise<{ ok: boolean; report?: IngestReport; error?: string }>;
 }
 

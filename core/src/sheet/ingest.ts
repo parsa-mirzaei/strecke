@@ -6,6 +6,7 @@
  *   - new row            → new item, status active, enters practice as "new"
  *   - edited row         → same item, content replaced; state kept; exercises regenerate from the new columns
  *   - fixed headword typo→ same item (one edit or two, same meaning, same class, the old one vanished)
+ *   - article filled in  → same item (a noun first entered without its article keeps its history)
  *   - other headword     → a new item; the old one is archived
  *   - deleted row        → archived: history kept, never scheduled; restored if the row comes back
  *   - reordered rows     → no effect
@@ -15,7 +16,7 @@ import { sha256 } from '../sha256.ts';
 import type { Row } from '../schema.ts';
 import { clean, dedupeKey } from '../text.ts';
 import { editDistance } from '../typing.ts';
-import { cleanRow, findHeader, mapHeader, SHEET_COLUMNS } from './contract.ts';
+import { cleanRow, findHeader, mapHeader, SHEET_COLUMNS, type Note } from './contract.ts';
 
 export interface LibraryItem {
   id: string;
@@ -23,6 +24,8 @@ export interface LibraryItem {
   base: string;
   /** base|meaning: tells homonyms apart. */
   full: string;
+  /** The sheet's own free-text `id`, when it has one that is not a `w_` id; it then identifies the word. */
+  sheetId?: string;
   row: Row;
   hash: string;
   status: 'active' | 'archived';
@@ -41,7 +44,8 @@ export interface Library {
 
 export const emptyLibrary = (): Library => ({ version: 1, items: {}, lastSync: null });
 
-export interface RowIssue { line: number; de: string; notes: string[]; skipped: boolean }
+/** `line` is the spreadsheet's own row number (the header is row 1 when it sits in the first row). */
+export interface RowIssue { line: number; de: string; notes: Note[]; skipped: boolean }
 
 export interface IngestReport {
   ok: boolean;
@@ -53,7 +57,7 @@ export interface IngestReport {
   archived: string[];
   restored: string[];
   unchanged: number;
-  /** Rows used with some cells left out, and rows skipped; plain German notes. */
+  /** Rows used with some cells left out, and rows skipped; notes as codes the interface words. */
   issues: RowIssue[];
   /** The same word twice in the sheet: later lines are ignored. */
   duplicates: Array<{ line: number; de: string; firstLine: number }>;
@@ -95,7 +99,7 @@ export function ingest(prev: Library | null, table: readonly (readonly string[])
   report.unknownColumns = map.unknown;
 
   // 1. Clean every row; collect usable ones.
-  interface Incoming { line: number; row: Row; base: string; full: string; hash: string; explicitId: string }
+  interface Incoming { line: number; row: Row; base: string; full: string; hash: string; explicitId: string; sheetId: string }
   const incoming: Incoming[] = [];
   const firstLineOf = new Map<string, number>();
   for (let i = h + 1; i < table.length; i++) {
@@ -108,11 +112,12 @@ export function ingest(prev: Library | null, table: readonly (readonly string[])
     if (c.row.status === 'rejected' || c.row.status === 'pending') continue; // not part of practice (Vorschläge come later)
     const k = keys(c.row);
     const explicitId = ID_RE.test(c.row.word_id ?? '') ? c.row.word_id! : '';
-    const identity = explicitId || k.full;
+    const sheetId = !explicitId && c.row.word_id ? c.row.word_id : '';
+    const identity = explicitId || (sheetId ? `id:${sheetId}` : k.full);
     const first = firstLineOf.get(identity);
     if (first !== undefined) { report.duplicates.push({ line, de: c.row.de!, firstLine: first }); continue; }
     firstLineOf.set(identity, line);
-    incoming.push({ line, row: c.row, ...k, hash: hashRow(c.row), explicitId });
+    incoming.push({ line, row: c.row, ...k, hash: hashRow(c.row), explicitId, sheetId });
   }
 
   // 2. Match incoming rows to library items, independent of row order.
@@ -122,8 +127,12 @@ export function ingest(prev: Library | null, table: readonly (readonly string[])
   const take = (inc: Incoming, it: LibraryItem) => { matched.set(inc, it); used.add(it.id); };
   const byId = new Map(items.map((it) => [it.id, it]));
   const sorted = [...incoming].sort((a, b) => (a.full < b.full ? -1 : a.full > b.full ? 1 : a.hash < b.hash ? -1 : 1));
-  // a. an id column wins
-  for (const inc of sorted) { const it = inc.explicitId ? byId.get(inc.explicitId) : undefined; if (it && !used.has(it.id)) take(inc, it); }
+  const bySheetId = new Map(items.filter((it) => it.sheetId).map((it) => [it.sheetId!, it]));
+  // a. an id column wins: a `w_` id, or the sheet's own free-text id
+  for (const inc of sorted) {
+    const it = inc.explicitId ? byId.get(inc.explicitId) : inc.sheetId ? bySheetId.get(inc.sheetId) : undefined;
+    if (it && !used.has(it.id)) take(inc, it);
+  }
   // b. same word, same meaning
   for (const inc of sorted) {
     if (matched.has(inc)) continue;
@@ -144,6 +153,14 @@ export function ingest(prev: Library | null, table: readonly (readonly string[])
       && foldEn(x.row.en!) === foldEn(inc.row.en!) && editDistance(x.row.de!.toLowerCase(), inc.row.de!.toLowerCase(), 2) <= 2);
     if (cands.length === 1) { take(inc, cands[0]!); report.renamed.push(cands[0]!.id); }
   }
+  // e. article filled in later: same word, class and meaning; the device's copy had no article
+  for (const inc of sorted) {
+    if (matched.has(inc) || !inc.row.article) continue;
+    const de = dedupeKey(inc.row.de!, inc.row.pos!);
+    const cands = items.filter((x) => !used.has(x.id) && !x.row.article && x.row.pos === inc.row.pos
+      && dedupeKey(x.row.de!, x.row.pos!) === de && foldEn(x.row.en!) === foldEn(inc.row.en!));
+    if (cands.length === 1) take(inc, cands[0]!);
+  }
 
   // 3. Apply.
   const taken = new Set(items.map((x) => x.id));
@@ -159,15 +176,16 @@ export function ingest(prev: Library | null, table: readonly (readonly string[])
         it.hash = inc.hash;
         it.base = inc.base;
         it.full = inc.full;
+        if (inc.sheetId) it.sheetId = inc.sheetId; else delete it.sheetId;
         it.updatedAt = now;
         if (!report.renamed.includes(it.id)) report.updated.push(it.id);
       } else if (!wasArchived) report.unchanged++;
       continue;
     }
-    const id = inc.explicitId && !taken.has(inc.explicitId) ? inc.explicitId : mintStableId(inc.full, taken);
+    const id = inc.explicitId && !taken.has(inc.explicitId) ? inc.explicitId : mintStableId(inc.sheetId ? `id:${inc.sheetId}` : inc.full, taken);
     taken.add(id);
     lib.items[id] = {
-      id, base: inc.base, full: inc.full, row: { ...inc.row, word_id: id }, hash: inc.hash, status: 'active', line: inc.line,
+      id, base: inc.base, full: inc.full, ...(inc.sheetId ? { sheetId: inc.sheetId } : {}), row: { ...inc.row, word_id: id }, hash: inc.hash, status: 'active', line: inc.line,
       firstSeen: now, updatedAt: now, archivedAt: null,
     };
     report.added.push(id);

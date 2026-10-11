@@ -1,0 +1,11 @@
+Strecke word list
+""
+This sheet holds the words you practise in the Strecke app. The app only reads it; it never changes it.
+"Words tab: one row per word. Only the word column is required, and a meaning is needed before a row is practised. Every other column is optional and adds exercises."
+"Columns can be in any order, extra columns are ignored, and English or German header names both work (word/Wort, meaning/Bedeutung)."
+Inbox tab (optional): write a word you want to learn. Your AI assistant adds the full row to Words and writes the date into processed.
+Meta tab (optional): schema_version tells the app which layout this sheet follows.
+To connect: File > Share > Publish to web > choose only the Words tab > Comma-separated values (.csv) > Publish. Paste the link in Strecke > Settings > Data.
+Privacy: anyone with a published link can read that tab. Keep private notes out of it.
+""
+Example row (also in the Words tab):

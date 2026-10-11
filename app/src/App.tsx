@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { DataAdapter, Snapshot } from '@core/data/adapter.ts';
-import { SheetAdapter, type TableSource } from '@core/data/sheet.ts';
+import { SheetAdapter, type OptionalTabs, type TableSource } from '@core/data/sheet.ts';
 import { composeRun } from '@core/engine/run.ts';
 import { dashboard } from '@core/engine/stats.ts';
 import { parseSettings, type Settings } from '@core/engine/settings.ts';
@@ -10,7 +10,7 @@ import type { Ctx, Screen } from './appctx';
 import { audio, setAudioSettings, unlockAudio } from './audio/browser';
 import { randomBytes } from './data/source';
 import { setHaptics } from './lib/haptics';
-import { setLocale } from './i18n';
+import { setLocale, t } from './i18n';
 import { CHANNEL } from './ns';
 import { Run, type Grade, type RunState } from './run/Run';
 import { End, Summary } from './screens/Summary';
@@ -29,8 +29,8 @@ import { forcedCards } from './dev';
  * The answers of a run are kept in memory and saved together, in one transaction, when the run ends
  * or the app is hidden; leaving a run midway costs nothing.
  */
-export function App({ adapter, app, snapshot, settings: initial, device: initialDevice, source = null }: {
-  adapter: DataAdapter; app: AppStore; snapshot: Snapshot; settings: Settings; device: DeviceInfo; source?: TableSource | null;
+export function App({ adapter, app, snapshot, settings: initial, device: initialDevice, source = null, tabs = {} }: {
+  adapter: DataAdapter; app: AppStore; snapshot: Snapshot; settings: Settings; device: DeviceInfo; source?: TableSource | null; tabs?: OptionalTabs;
 }) {
   const [, bump] = useState(0);
   const data = useRef({
@@ -127,11 +127,11 @@ export function App({ adapter, app, snapshot, settings: initial, device: initial
     async sync(from?: TableSource) {
       const src = from ?? source;
       if (!src || !(adapter instanceof SheetAdapter)) return { ok: false, error: 'no_sheet' };
-      const res = await adapter.sync(src);
+      const res = await adapter.sync(src, from ? {} : tabs);
       await ctx.reload();
       return res;
     },
-  }), [adapter, app, source]);
+  }), [adapter, app, source, tabs]);
 
   // Hidden (another app, the lock screen): save what has been answered.
   useEffect(() => {
@@ -141,9 +141,24 @@ export function App({ adapter, app, snapshot, settings: initial, device: initial
     return () => { document.removeEventListener('visibilitychange', save); removeEventListener('pagehide', save); };
   }, []);
 
-  // Background sync on open: practice starts from the device's copy; new or edited rows arrive quietly
-  // and are used from the next run on.
-  useEffect(() => { if (source) void ctx.sync(); }, []);
+  // Background sync on open and on every return to the app (online, at most once a minute): practice
+  // starts from the device's copy; new or edited rows arrive quietly and are used from the next run on.
+  // New words get one calm line on the end screen.
+  useEffect(() => {
+    if (!source) return;
+    let last = 0;
+    const pull = async () => {
+      if (!navigator.onLine || Date.now() - last < 60_000) return;
+      last = Date.now();
+      const r = await ctx.sync();
+      const n = r.ok ? r.report?.added.length ?? 0 : 0;
+      if (n) ctx.setNotice(n === 1 ? t('notice.newWord') : t('notice.newWords', { n }));
+    };
+    const onShow = () => { if (document.visibilityState === 'visible') void pull(); };
+    void pull();
+    document.addEventListener('visibilitychange', onShow);
+    return () => document.removeEventListener('visibilitychange', onShow);
+  }, []);
 
   setAudioSettings(ctx.settings.audio);
   setHaptics(ctx.settings.haptics);

@@ -20,7 +20,7 @@ describe('stress fixture: messy data', () => {
     expect(skipped).toEqual(expect.arrayContaining(['Kühlschrank', 'klasse']));
     expect(report.duplicates).toHaveLength(1);
     expect(report.unknownColumns).toEqual(['Lernstand (eigene Spalte)']);
-    expect(report.issues.find((i) => i.de === 'Schrank')!.notes).toContain('Artikel fehlt');
+    expect(report.issues.find((i) => i.de === 'Schrank')!.notes).toContainEqual({ code: 'article_missing', column: 'article' });
     expect(words.find((w) => w.de === 'Feierabend')!.note).toBe(''); // the emoji note cell is dropped, the word stays
     expect(words.some((w) => w.de === 'A')).toBe(true);
     expect(words.filter((w) => w.de === 'Bank')).toHaveLength(2);

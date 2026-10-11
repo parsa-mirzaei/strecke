@@ -28,8 +28,8 @@ describe('sheet contract: headers', () => {
     expect([...mapHeader(['Wort', 'Übersetzung']).columns.values()]).toEqual(['de', 'en']);
   });
   it('unknown columns are reported and ignored; a repeated column: the first wins', () => {
-    const m = mapHeader(['de', 'en', 'Lernstand', 'Quelle', 'de']);
-    expect(m.unknown).toEqual(['Lernstand', 'Quelle']);
+    const m = mapHeader(['de', 'en', 'Lernstand', 'Farbe', 'de']);
+    expect(m.unknown).toEqual(['Lernstand', 'Farbe']);
     expect(m.repeated).toEqual(['de']);
     expect(m.columns.get(4)).toBeUndefined();
   });
@@ -49,12 +49,12 @@ describe('sheet contract: rows', () => {
   it('a row without German word or meaning is skipped, with a plain note', () => {
     const c = cleanRow(['Termin', 'der', '', '', '', '', '', ''], m);
     expect(c.skip).toBe(true);
-    expect(c.notes[0]).toContain('Bedeutung');
+    expect(c.notes[0]).toEqual({ code: 'missing_meaning' });
   });
   it('empty optional cells are fine; a missing article on a noun is noted, not fatal', () => {
     const c = cleanRow(['Fenster', '', '', 'window', 'noun', '', '', ''], m);
     expect(c.skip).toBe(false);
-    expect(c.notes).toContain('Artikel fehlt');
+    expect(c.notes).toContainEqual({ code: 'article_missing', column: 'article' });
   });
   it('word class is guessed when empty, from cheap signals only', () => {
     expect(guessPos('Termin', 'der')).toBe('noun');
@@ -68,7 +68,7 @@ describe('sheet contract: rows', () => {
     const c = cleanRow(['Termin', 'der', '', 'appointment', 'noun', '', 'Der Zug ist spät.', 'The train is late.'], m);
     expect(c.skip).toBe(false);
     expect(c.row.example_de).toBe('');
-    expect(c.notes.join()).toContain('Wort kommt im Satz nicht vor');
+    expect(c.notes).toContainEqual(expect.objectContaining({ code: 'cell_dropped', column: 'example_de', reason: expect.stringContaining('form_not_in_example') }));
   });
   it('unsafe cells (formula, link) are dropped; an unsafe German word skips the row', () => {
     expect(cleanRow(['Termin', 'der', '', 'appointment', 'noun', '', '=HYPERLINK("x")', 'y'], m).row.example_de).toBe('');
@@ -81,7 +81,7 @@ describe('sheet contract: rows', () => {
   it('an example without translation still counts as a sentence', () => {
     const c = cleanRow(['Termin', 'der', '', 'appointment', 'noun', '', 'Ich habe einen Termin.', ''], m);
     expect(c.row.example_de).toBe('Ich habe einen Termin.');
-    expect(c.notes.join()).toContain('fehlt');
+    expect(c.notes).toContainEqual({ code: 'translation_missing', column: 'example_en' });
   });
   it('long sentences of the learner are kept (up to 30 words)', () => {
     const long = `Ich habe ${'heute '.repeat(20)}einen Termin.`;

@@ -7,6 +7,7 @@
 import { toWordRecord } from '../record.ts';
 import { DEFAULT_CONFIG, type LearnEvent } from '../scheduler.ts';
 import { emptyLibrary, ingest, introductionOrder, type IngestReport, type Library } from '../sheet/ingest.ts';
+import { readInbox, readSchemaVersion, type InboxRead, type SchemaCheck } from '../sheet/tabs.ts';
 import type { DataAdapter, EventLog, KeyValueStore, Snapshot, SourceInfo, WordStatusChange } from './adapter.ts';
 
 /** Where the table comes from: a published CSV link, an uploaded file, the dev seed, a test fake. */
@@ -14,6 +15,9 @@ export interface TableSource {
   readonly label: string;
   read(): Promise<string[][]>;
 }
+
+/** The optional tabs, each with its own published link (its own gid). */
+export interface OptionalTabs { inbox?: TableSource | null; meta?: TableSource | null }
 
 const LIB = 'strecke.sheet.library.v1';
 const LOG = 'strecke.sheet.log.v1';
@@ -27,8 +31,10 @@ interface Log {
   lastReport: IngestReport | null;
   lastError: string | null;
   lastAttempt: number | null;
+  inbox: InboxRead | null;
+  schema: SchemaCheck;
 }
-const emptyLog = (): Log => ({ events: [], status: {}, lastReport: null, lastError: null, lastAttempt: null });
+const emptyLog = (): Log => ({ events: [], status: {}, lastReport: null, lastError: null, lastAttempt: null, inbox: null, schema: { status: 'none' } });
 
 export class SheetAdapter implements DataAdapter {
   readonly kind = 'sheet' as const;
@@ -59,6 +65,7 @@ export class SheetAdapter implements DataAdapter {
     const source: SourceInfo = {
       lastSync: lib.lastSync, lastAttempt: log.lastAttempt, lastError: log.lastError,
       issues: log.lastReport?.issues ?? [], duplicates: log.lastReport?.duplicates ?? [], unknownColumns: log.lastReport?.unknownColumns ?? [], archived,
+      inbox: log.inbox, schema: log.schema,
     };
     return {
       words: records.filter((w) => w.status === 'active' || w.status === 'pending'),
@@ -69,8 +76,11 @@ export class SheetAdapter implements DataAdapter {
     };
   }
 
-  /** Read the sheet and ingest it. Never throws: a failure is recorded and the last good library stays. */
-  async sync(source: TableSource): Promise<{ ok: boolean; report?: IngestReport; error?: string }> {
+  /**
+   * Read the sheet and ingest it. Never throws: a failure is recorded and the last good library stays.
+   * The optional Inbox and Meta tabs are read alongside; if one of them fails, the words still sync.
+   */
+  async sync(source: TableSource, tabs: OptionalTabs = {}): Promise<{ ok: boolean; report?: IngestReport; error?: string }> {
     const log = await this.log();
     log.lastAttempt = this.now();
     let table: string[][];
@@ -81,6 +91,10 @@ export class SheetAdapter implements DataAdapter {
       await this.store.set(this.keys.log, log);
       return { ok: false, error: log.lastError };
     }
+    const optional = async (src: TableSource | null | undefined) => { try { return src ? await src.read() : null; } catch { return undefined; } };
+    const [inbox, meta] = [await optional(tabs.inbox), await optional(tabs.meta)];
+    log.inbox = tabs.inbox ? (inbox ? readInbox(inbox) : { ok: false, problem: 'unreachable' }) : null;
+    if (meta !== undefined) log.schema = readSchemaVersion(meta);
     const { library, report } = ingest(await this.library(), table, this.now());
     if (!report.ok) {
       log.lastError = report.error ?? 'unreadable';

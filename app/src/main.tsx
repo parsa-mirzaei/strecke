@@ -22,9 +22,9 @@ import { applyAppearance, loadSettings } from './state/settings';
   const devLang = import.meta.env.DEV ? new URLSearchParams(location.search).get('lang') : null;
   setLocale(devLang === 'de' || devLang === 'en' ? devLang : settings.locale);
   applyAppearance(settings);
-  const { adapter, source } = await openSource(app, settings);
+  const { adapter, source, tabs } = await openSource(app, settings);
   const snapshot = await adapter.load();
-  render(<App adapter={adapter} app={app} snapshot={snapshot} settings={settings} device={device} source={source} />, document.getElementById('app')!);
+  render(<App adapter={adapter} app={app} snapshot={snapshot} settings={settings} device={device} source={source} tabs={tabs} />, document.getElementById('app')!);
 })().catch((err) => {
   console.error(err);
   document.getElementById('app')!.textContent = t('boot.failed');

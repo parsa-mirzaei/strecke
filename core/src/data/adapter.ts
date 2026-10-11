@@ -5,6 +5,8 @@
  * Callers never know which one they hold.
  */
 import type { Domain, WordRecord } from '../record.ts';
+import type { Note } from '../sheet/contract.ts';
+import type { InboxRead, SchemaCheck } from '../sheet/tabs.ts';
 import type { EngineConfig, LearnEvent } from '../scheduler.ts';
 
 export interface Snapshot {
@@ -22,10 +24,14 @@ export interface SourceInfo {
   lastSync: number | null;
   lastAttempt: number | null;
   lastError: string | null;
-  issues: Array<{ line: number; de: string; notes: string[]; skipped: boolean }>;
+  issues: Array<{ line: number; de: string; notes: Note[]; skipped: boolean }>;
   duplicates: Array<{ line: number; de: string; firstLine: number }>;
   unknownColumns: string[];
   archived: number;
+  /** The optional Inbox tab as last read; null when none is connected. */
+  inbox: InboxRead | null;
+  /** The Meta tab's schema_version against the app's. */
+  schema: SchemaCheck;
 }
 
 export type WordStatusChange = 'active' | 'rejected' | 'suspended';
