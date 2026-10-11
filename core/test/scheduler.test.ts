@@ -348,3 +348,43 @@ describe('simulation: 300 cards on the demo deck', () => {
     expect(new Set(shown.map((s) => s.type)).size).toBeGreaterThanOrEqual(6);
   });
 });
+
+describe('Karte self-report (D52)', () => {
+  const karte = (rating?: 1 | 2 | 3 | 4) => ev({ kind: 'seen', exercise: 'karte', ...(rating ? { rating } : {}) });
+
+  it('without a report: stage 0 → 1, due now, no memory yet', () => {
+    const s = step(at(0), karte(), CAPS, 0.9);
+    expect(s.stage).toBe(1);
+    expect(s.memory).toBeNull();
+  });
+
+  it('a report sets the memory from its FSRS rating; "instantly" starts at stage 2', () => {
+    const states = ([1, 2, 3, 4] as const).map((r) => step(at(0), karte(r), CAPS, 0.9));
+    expect(states.map((s) => s.stage)).toEqual([1, 1, 1, 2]);
+    const stab = states.map((s) => s.memory!.stability);
+    expect(stab[0]!).toBeLessThan(stab[1]!);
+    expect(stab[1]!).toBeLessThan(stab[2]!);
+    expect(stab[2]!).toBeLessThan(stab[3]!);
+    expect(states.every((s) => s.due! > T0)).toBe(true);
+  });
+
+  it('"knew it" and "instantly" skip the same-visit recall; the lower two keep it', () => {
+    for (const r of [1, 2] as const) expect(afterCard(newSession(), karte(r)).reinsert).toHaveLength(1);
+    for (const r of [3, 4] as const) expect(afterCard(newSession(), karte(r)).reinsert).toHaveLength(0);
+  });
+
+  it('round-trips through a Core events row and replays identically', () => {
+    const e = karte(4);
+    const back = eventFromRow(eventToRow(e));
+    expect(back).toMatchObject({ kind: 'seen', rating: 4 });
+    const a = replay([full], [e]).get(full.id)!;
+    const b = replay([full], [back!]).get(full.id)!;
+    expect(b).toEqual(a);
+  });
+
+  it('a stand-in gate (gate: true) promotes like the gate and is kept in the row', () => {
+    const s = step(at(1), ev({ exercise: 'bedeutung', gate: true }), CAPS, 0.9);
+    expect(s.stage).toBe(2);
+    expect(eventFromRow(eventToRow(ev({ exercise: 'bedeutung', gate: true })))).toMatchObject({ gate: true });
+  });
+});

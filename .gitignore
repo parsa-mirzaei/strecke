@@ -16,3 +16,4 @@ Thumbs.db
 
 # graphify knowledge graph (local tooling output)
 graphify-out/
+dist-preview/

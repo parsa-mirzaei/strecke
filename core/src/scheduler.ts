@@ -29,6 +29,17 @@ export interface LearnEvent {
   dontKnow: boolean;
   /** The option the learner chose (logged for re-tuning; not used by the scheduler). */
   chosen?: string;
+  /**
+   * Karte only: the learner's own report after lifting the cover (D52): 1 didn't know, 2 partly,
+   * 3 knew it, 4 instantly. The Karte is the one card with no behaviour to grade, so this is its signal.
+   */
+  rating?: Rating;
+  /**
+   * Set when this exercise stood in for the record's gate because the gate exercise could not be built
+   * on this deck (too few same-form distractors, D55). Stored in the log, so replay stays a pure
+   * function of the log and the word's own columns.
+   */
+  gate?: boolean;
 }
 
 export interface WordState {
@@ -61,7 +72,7 @@ export const SLOW_MS: Record<ExerciseType, number> = {
   tippen: 20_000, kontext2: 10_000,
 };
 
-/** Rating inferred from behaviour; there are no self-grade buttons (D42). */
+/** Rating inferred from behaviour on graded exercises (D42); only the ungraded Karte carries a self-report (D52). */
 export function ratingFor(e: LearnEvent): Rating {
   if (!e.correct || e.dontKnow) return 1;
   if (e.help || e.ms > SLOW_MS[e.exercise]) return 2;
@@ -98,14 +109,21 @@ export function initialState(w: WordRecord): WordState {
 export function step(state: WordState, e: LearnEvent, caps: ReadonlySet<ExerciseType>, retention: number): WordState {
   const s: WordState = { ...state, lastSeen: e.ts, firstSeen: state.firstSeen ?? e.ts, introduced: true };
   if (e.kind === 'seen') {
-    if (s.stage === 0) s.stage = 1;
-    if (!s.memory) s.due = e.ts; // comes back soon: first in this visit (reinsertion), else next open
+    // "Instantly" on a new word skips recognition; every other report starts the ladder at 1.
+    if (s.stage === 0) s.stage = e.rating === 4 ? 2 : 1;
+    if (e.rating) {
+      s.memory = state.memory && state.lastReview !== null
+        ? review(state.memory, (e.ts - state.lastReview) / DAY, e.rating)
+        : initMemory(e.rating);
+      s.lastReview = e.ts;
+      s.due = e.ts + Math.round(interval(s.memory.stability, retention) * DAY);
+    } else if (!s.memory) s.due = e.ts; // comes back soon: first in this visit (reinsertion), else next open
     return s;
   }
   const g = ratingFor(e);
   const stage = Math.max(1, s.stage); // a review of an unseen word counts at stage 1
   // At stage 5 every exercise is part of the rotation, so any miss there is a gate miss (→ 3).
-  const isGate = stage === 5 || gateTypes(stage, caps).includes(e.exercise);
+  const isGate = stage === 5 || e.gate === true || gateTypes(stage, caps).includes(e.exercise);
   if (g > 1) {
     s.stage = isGate && stage < 5 ? stage + 1 : stage;
     s.streak = state.streak + 1;
@@ -183,7 +201,8 @@ export function afterCard(session: Session, e: LearnEvent, wasSuggestion = false
   };
   const at = s.cardIndex + offset(e.id);
   if (e.kind === 'seen') {
-    if (!wasSuggestion) s.reinsert.push({ wordId: e.wordId, at });
+    // A short recall a few cards later, unless the learner reported knowing it already.
+    if (!wasSuggestion && (e.rating ?? 0) < 3) s.reinsert.push({ wordId: e.wordId, at });
     return s;
   }
   if (ratingFor(e) === 1) {
@@ -210,7 +229,8 @@ export interface PickInput {
 }
 
 export type PickReason = 'reinsert' | 'easy' | 'due' | 'new' | 'practice';
-export interface Pick { word: WordRecord; exercise: Exercise; reason: PickReason }
+/** `asGate`: the exercise stands in for a gate this deck cannot build (D55); logged on the event. */
+export interface Pick { word: WordRecord; exercise: Exercise; reason: PickReason; asGate?: boolean }
 
 /** Preference order at stage 5, rotated by the word's review count. */
 const STAGE5 = ['tippen', 'hoeren', 'kontext2', 'praeposition', 'bedeutung', 'artikel'] as const;
@@ -334,6 +354,8 @@ export function eventFromRow(r: Readonly<Record<string, string | undefined>>): L
     correct: r.result === '1', ms: Number(r.ms) || 0,
     help: payload.text_shown === true || payload.near_miss === true, dontKnow: payload.dont_know === true,
     ...(typeof payload.chosen === 'string' ? { chosen: payload.chosen } : {}),
+    ...([1, 2, 3, 4].includes(payload.self_rating as number) ? { rating: payload.self_rating as Rating } : {}),
+    ...(payload.gate === true ? { gate: true } : {}),
   };
 }
 
@@ -343,6 +365,8 @@ export function eventToRow(e: LearnEvent, device = ''): Record<string, string> {
   if (e.chosen !== undefined) payload.chosen = e.chosen;
   if (e.help) payload[e.exercise === 'tippen' ? 'near_miss' : 'text_shown'] = true;
   if (e.dontKnow) payload.dont_know = true;
+  if (e.rating) payload.self_rating = e.rating;
+  if (e.gate) payload.gate = true;
   return {
     event_id: e.id, ts: new Date(e.ts).toISOString(), type: e.kind, word_id: e.wordId,
     prompt_id: '', card_type: e.exercise, result: e.kind === 'seen' ? '' : e.correct ? '1' : '0', ms: String(Math.round(e.ms)),

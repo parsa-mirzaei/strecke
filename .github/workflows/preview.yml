@@ -1,0 +1,36 @@
+# Builds the PREVIEW channel (separate storage namespace, D57) on work branches and attaches it as a
+# workflow artifact. It never deploys to GitHub Pages: the live site is published only from main
+# (pages.yml). See docs/DEPLOY.md for how a preview gets its own URL.
+name: preview
+
+on:
+  push:
+    branches: ['claude/**', 'preview/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Core tests and typecheck
+        run: npm ci --ignore-scripts && npm test && npm run typecheck
+      - name: App install
+        working-directory: app
+        run: npm ci --ignore-scripts
+      - name: App tests, typecheck, preview build
+        working-directory: app
+        run: npm test && npm run typecheck && npx vite build --mode preview
+      - name: Privacy audit (all tracked files)
+        run: bash tools/privacy-audit.sh --all
+      - uses: actions/upload-artifact@v4
+        with:
+          name: strecke-preview
+          path: app/dist-preview
+          retention-days: 30

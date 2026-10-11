@@ -1,36 +1,35 @@
 <!doctype html>
-<html lang="de">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-    <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#16171b" />
-    <meta name="description" content="Strecke: Deutsch für zwischendurch. Öffnen, und du bist schon dabei." />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#F4F0E6" />
+    <meta name="description" content="Strecke: German practice for spare moments. Open it and you are already practising." />
     <title>Strecke</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./icon-192.png" />
     <link rel="apple-touch-icon" href="./icon-192.png" />
     <script>
-      // Theme before first paint (dark first; see src/ui/theme.ts). No flash on open.
+      // Theme and language before first paint (see src/state/settings.ts). No flash on open.
       try {
-        var t = localStorage.getItem('strecke.theme');
-        var light = t === 'light' || (t === 'system' && matchMedia('(prefers-color-scheme: light)').matches);
-        if (light) {
-          document.documentElement.classList.add('boot-light');
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#f1f0ec');
-        }
+        var t = localStorage.getItem('__NS__.theme');
+        var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        if (dark) document.querySelector('meta[name="theme-color"]').setAttribute('content', '#13171D');
+        if (localStorage.getItem('__NS__.locale') === 'de') document.documentElement.lang = 'de';
       } catch (e) {}
     </script>
     <style>
       /* First paint before the bundle, in the right theme. */
-      html, body { margin: 0; background: #16171b; color: #8c877c; font-family: system-ui, sans-serif; }
-      .boot-light, .boot-light body { background: #f1f0ec; color: #6b675f; }
-      .boot { display: grid; place-items: center; height: 100dvh; font-size: 0.875rem; }
+      html, body { margin: 0; background: #F4F0E6; color: #5B6270; font-family: system-ui, sans-serif; }
+      [data-theme='dark'], [data-theme='dark'] body { background: #13171D; color: #A3A9B4; }
+      .boot { display: grid; place-items: center; height: 100dvh; font-size: 0.875rem; letter-spacing: 0.12em; }
     </style>
   </head>
   <body>
-    <div id="app"><div class="boot">Strecke</div></div>
-    <noscript>Strecke braucht JavaScript.</noscript>
+    <div id="app"><div class="boot">STRECKE</div></div>
+    <noscript>Strecke needs JavaScript.</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

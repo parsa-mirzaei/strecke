@@ -198,3 +198,55 @@ The product owner's brief of 2026-10-07 changes the interface, the exercise mode
 - **Known limits:**
   - In a very small deck, a part of speech with fewer than three words gets no Lücke or Bedeutung, so its words can stay at the stage before that gate until the deck grows.
   - One memory state per word (see D41).
+
+## 2026-10-11 · Round 4: frictionless sheet, "Fill my list", hardened local storage
+
+The product owner's Round 4 brief asks that no questions be asked: decide, record here, continue. Where it conflicts with earlier entries or CLAUDE.md, the brief wins, as the owner's latest instruction, and the conflict is named below. The security docs' privacy rules still apply to every commit.
+
+**D49 Three layers; the app reads the sheet and never writes it [settled by the owner, Round 4].**
+- **Google Sheet = the learner's content layer** and the bridge to the outside world. The learner and their own AI assistant write it.
+- **The device = working state.** The event log, FSRS state and settings live in IndexedDB; the engine runs on them offline.
+- **The app = a static PWA** on GitHub Pages.
+- No central server, no API keys held by the app, and the app never calls an AI service or connects to an AI account.
+- This replaces, for the app path, the Apps Script web app with a token (D31, D45). It also replaces SPEC's "saves every answer to the learner's own Google Sheet": answers stay on the device and are protected by backups (D51).
+- The Apps Script/security-core code stays in the repo, unused by the app in this round.
+- The level is a user input only. The app is not limited to A2–B1; this overrides the A2–B1 framing in CLAUDE.md and SPEC for anything the user configures.
+- *Status of earlier briefs* (checked in code, 2026-10-11):
+  - The docs this brief names — `SHEET_SCHEMA`, `ENGINE`, the Round 3 report, and `docs/design/DECISIONS.md` — do not exist in this repo. Decisions continue in this file.
+  - The repo was at Station Phase B: the core engine was done, and the live app was still the Heft prototype on synthetic data.
+  - **(a)** UI language en/de, data-source clarity and backup wording: *not done* (German-only UI, no source label, no backup).
+  - **(b)** Distractor form agreement: *partial* (D48 prefers forms with the same ending, nothing more). The production-share report: *not done* (no simulator existed).
+
+**D50 Device storage: IndexedDB with versioned migrations, quarantine, memory fallback.**
+- The prototype kept everything in one localStorage blob, with silent loss on quota errors, the 2 000-event cap, corruption and two tabs (audit: [STORAGE.md](STORAGE.md)).
+- Everything now lives in IndexedDB through a thin wrapper of about 100 lines, so no `idb` dependency is needed.
+- Damaged records are quarantined, not dropped.
+- A one-time migration archives the old blob and converts the events it can.
+- `navigator.storage.persist()` is requested after the first completed run, never on first load, and the result is shown in Settings › Data.
+- Measured growth: about 3.5 MB a year at 50 answers a day. Not a concern.
+- `fake-indexeddb` (Apache-2.0) and `preact-render-to-string` (MIT) are added as **dev dependencies** for tests. Neither ships.
+
+**D51 Backup = a merge-only file.**
+- *Back up now* uses the Web Share API with a file where files can be shared, and a download otherwise.
+- The file is `.txt`/`text/plain` because Chrome's share allow-list has no JSON (source in STORAGE.md).
+- Restore validates the file, shows a dry run, and only ever adds missing events and settings.
+- A single quiet hint appears after 10 runs without a backup.
+
+**D52 Karte self-report row (deviation from D42).** The brief asks for the rating labels *Didn't know / Partly / Knew it / Instantly* with rising-bars icons.
+- The Karte is the one card with no behaviour to grade, so it gets this four-step report after the cover lifts. It maps to FSRS ratings 1–4 and is stored on the `seen` event as `rating`.
+- *Instantly* on a new word starts it at stage 2; *Knew it* and *Instantly* skip the same-visit recall.
+- Every graded exercise still rates from behaviour only. There are still no self-grade buttons on graded cards.
+
+**D53 UI strings in one table; English is the default UI language (deviation from CLAUDE.md "UI labels in German").**
+- `app/src/i18n/en.ts` and `de.ts` hold every string; a test fails on literal user-facing text in components.
+- Learning content from the sheet stays German.
+- The German table keeps the STATION.md labels (*Weiter*, *Fertig*, *Weiß ich nicht*, *Das sehen wir bald wieder.*, …).
+
+**D54 The Heft is replaced by a Station practice screen on the core engine (prerequisite for this round; partly Phase C).**
+- The Heft read a fixed synthetic item shape, which cannot come from an arbitrary sheet. The new screen draws every card from `exercisesFor` + `pickNext` (core). Done in slice 1 because the event log format moves to core's `LearnEvent`.
+- It covers one card at a time, the eight exercise types, amber gaps and cover, *Weiß ich nicht*, a calm wrong state (dashed outline, `GEWÄHLT`, no red), Next/Done, keyboard 1–4/Enter, a live region, reduced motion, haptics and self-hosted Overpass.
+- Not built in this round: swipe-up to continue, the FLIP fly-in, *Dein Weg*, *Wörter*, *Hinzufügen*, *Vorschläge*. A run is one visit with at least one answer, ended by *Done* or by leaving the app.
+
+**D57 Preview channel.**
+- `vite build --mode preview` builds a separate app (`dist-preview/`) with its own IndexedDB name (`strecke-preview`), localStorage keys, service-worker cache prefix and manifest (`Strecke Preview`). A preview on the same phone never touches the live app's data.
+- GitHub Pages serves one site per repository, and its deploy workflow runs on `main`. So a preview **URL** cannot be published from this branch without touching `main` or the live site, which the brief forbids. CI on this branch builds the preview and attaches it as a workflow artifact; hosting it at its own URL needs one owner decision (DEPLOY.md).
