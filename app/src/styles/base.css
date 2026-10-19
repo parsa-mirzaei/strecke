@@ -334,3 +334,7 @@ details.more-set[open] > summary::before { content: "−"; }
 .snap-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; padding: 10px 0; border-top: 1px solid var(--edge); }
 .snap-list small { display: block; color: var(--ink2); font: 400 14px/1.3 var(--f-body); }
 .prompt-out { width: 100%; min-height: 220px; font: 400 14px/1.45 ui-monospace, monospace; resize: vertical; }
+/* First steps on demo words: connect your sheet, or carry on with the demo. */
+.first-steps { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+.steps-help { margin: 6px 0 0; padding-left: 22px; }
+.steps-help li { margin: 4px 0; }

@@ -20,7 +20,7 @@ import { FillMyList } from './FillMyList';
 import { SheetSection } from './SheetSection';
 import { StorageSection } from './StorageSection';
 
-type Page = 'uebungen' | 'sheet' | 'fill' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
+export type Page = 'uebungen' | 'sheet' | 'fill' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
 const PAGES: readonly Page[] = ['uebungen', 'sheet', 'fill', 'audio', 'daten', 'darstellung', 'ziele', 'ueber'];
 const GATES: ExerciseType[] = ['luecke', 'tippen', 'kontext2'];
 
@@ -217,6 +217,14 @@ function SheetPage({ ctx }: { ctx: Ctx }) {
   return (
     <>
       <SheetSection ctx={ctx} />
+      <p class="kicker">{t('help.addTitle')}</p>
+      <ol class="note steps-help">
+        <li>{t('help.add1')}</li>
+        <li>{t('help.add2')}</li>
+        <li>{t('help.add3')}</li>
+        <li>{t('help.add4')}</li>
+        <li>{t('help.add5')}</li>
+      </ol>
       <p class="kicker">{t('data.missing')}</p>
       {thin.rows.length === 0 ? <p class="note">{t('data.allGood')}</p> : (
         <>
@@ -318,8 +326,8 @@ function Ueber() {
 
 // ---------------------------------------------------------------- screen
 
-export function SettingsScreen({ ctx, onBack }: { ctx: Ctx; onBack: () => void }) {
-  const [page, setPage] = useState<Page | null>(null);
+export function SettingsScreen({ ctx, onBack, initialPage = null }: { ctx: Ctx; onBack: () => void; initialPage?: Page | null }) {
+  const [page, setPage] = useState<Page | null>(initialPage);
   const set = (f: (s: Settings) => Settings) => ctx.setSettings(parseSettings(f(ctx.settings)));
   const s = ctx.settings;
   const summary: Record<Page, string> = {

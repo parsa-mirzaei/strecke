@@ -14,7 +14,7 @@ import { setLocale, t } from './i18n';
 import { CHANNEL } from './ns';
 import { Run, type Grade, type RunState } from './run/Run';
 import { End, Summary } from './screens/Summary';
-import { SettingsScreen } from './screens/Settings';
+import { SettingsScreen, type Page as SettingsPage } from './screens/Settings';
 import { Verlauf } from './screens/Verlauf';
 import { saveDevice, type DeviceInfo } from './state/device';
 import { applyAppearance, saveSettings } from './state/settings';
@@ -185,6 +185,7 @@ export function App({ adapter, app, snapshot, settings: initial, device: initial
   const [screen, setScreen] = useState<Screen>(first ? 'run' : 'end');
   const [back, setBack] = useState<Screen>('end');
   const [results, setResults] = useState<Grade[]>([]);
+  const [settingsPage, setSettingsPage] = useState<SettingsPage | null>(null);
   const nothing = ctx.words.filter((w) => w.status === 'active').length === 0;
 
   // Android's back button walks back through the screens instead of leaving the app.
@@ -237,9 +238,9 @@ export function App({ adapter, app, snapshot, settings: initial, device: initial
           onBackup={() => go('settings')}
         />
       ) : null}
-      {screen === 'end' ? <End ctx={ctx} nothing={nothing} onStart={newRun} onVerlauf={() => go('verlauf')} onSettings={() => go('settings')} /> : null}
+      {screen === 'end' ? <End ctx={ctx} nothing={nothing} onStart={newRun} onVerlauf={() => go('verlauf')} onSettings={() => { setSettingsPage(null); go('settings'); }} onConnect={() => { setSettingsPage('sheet'); go('settings'); }} /> : null}
       {screen === 'verlauf' ? <Verlauf ctx={ctx} onBack={leave} onPractice={practice} /> : null}
-      {screen === 'settings' ? <SettingsScreen ctx={ctx} onBack={leave} /> : null}
+      {screen === 'settings' ? <SettingsScreen ctx={ctx} onBack={leave} initialPage={settingsPage} /> : null}
     </>
   );
 }

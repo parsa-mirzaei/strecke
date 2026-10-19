@@ -66,20 +66,31 @@ export function Summary({ ctx, no, results, onAgain, onDone, onVerlauf, onDiscar
   );
 }
 
-/** The calm end: nothing pending, one way back in, the other screens one tap away. */
-export function End({ ctx, nothing, onStart, onVerlauf, onSettings }: { ctx: Ctx; nothing: boolean; onStart: () => void; onVerlauf: () => void; onSettings: () => void }) {
+/**
+ * The calm end: nothing pending, one way back in, the other screens one tap away. On demo words (or with
+ * nothing to practise) it offers the two first steps instead: connect your sheet, or use the demo words.
+ */
+export function End({ ctx, nothing, onStart, onVerlauf, onSettings, onConnect }: {
+  ctx: Ctx; nothing: boolean; onStart: () => void; onVerlauf: () => void; onSettings: () => void; onConnect: () => void;
+}) {
   const notice = ctx.notice === 'discarded' ? t('end.discarded') : ctx.notice;
+  const demo = ctx.adapter.kind !== 'sheet';
   return (
     <>
       <main class="end enter">
         <h1>{nothing ? t('end.nothingTitle') : t('end.title')}</h1>
-        <p>{nothing ? t('end.nothingText') : t('end.text')}</p>
+        <p>{nothing ? t('end.nothingText') : demo ? t('end.demoText') : t('end.text')}</p>
         {notice ? <p class="note" role="status">{notice}</p> : null}
-        <SourceLine ctx={ctx} onConnect={onSettings} />
+        {demo || nothing ? (
+          <div class="first-steps">
+            <button class="small-btn solid" type="button" onClick={onConnect}>{nothing && !demo ? t('end.checkSheet') : t('source.connect')}</button>
+            {demo && !nothing ? <button class="small-btn" type="button" onClick={onStart}>{t('end.useDemo')}</button> : null}
+          </div>
+        ) : <SourceLine ctx={ctx} onConnect={onConnect} />}
         <UpdateRow ctx={ctx} />
       </main>
       <footer class="act enter">
-        {!nothing ? <button class="primary" type="button" onClick={onStart}>{t('end.start')}</button> : null}
+        {!nothing && !demo ? <button class="primary" type="button" onClick={onStart}>{t('end.start')}</button> : null}
         <div class="nav">
           <button class="quiet" type="button" onClick={onVerlauf}><Icon name="chart-no-axes-column" size={20} />{t('nav.verlauf')}</button>
           <button class="quiet" type="button" onClick={onSettings}><Icon name="settings" size={20} />{t('nav.settings')}</button>
