@@ -44,6 +44,10 @@ Headers may be in any order, in German or English, in any capitalisation, with s
 - **Unknown columns** (for example the learner's own *Lernstand*) are ignored and listed in *Data*; they stay in the sheet untouched. A repeated column: the first one counts.
 - **Two examples in one cell** (a line break or ` | ` between them) become example 1 and example 2 when the second slot is empty.
 
+### Header row and "Fill my list"
+
+The template's header row is `TEMPLATE_HEADERS` in `core/src/sheet/contract.ts` (a test keeps it equal to `docs/template/Words.csv`). Each sync stores the Words tab's header row exactly as written; *Settings › Fill my list* lists exactly those headers, in order, and explains each one through the same alias table, so rows an assistant appends read back as intended (R5-4). Columns the app does not know are listed as "leave empty".
+
 ## Optional tabs
 
 | Tab | Columns | What the app does |

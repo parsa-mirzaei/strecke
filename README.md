@@ -9,10 +9,10 @@ A German practice app for A2–B1 learners. Open it and the first exercise is al
 | Channel | URL | Built from | Storage on the phone |
 | --- | --- | --- | --- |
 | **Stable** (used daily) | https://<owner>.github.io/strecke-preview/ | Round 3 (`ffa2ad4`), repository `strecke-preview`; never redeployed from newer work without the owner's go | IndexedDB `strecke-preview`, localStorage `strecke-preview.*`, caches `strecke-preview-*` |
-| **Next** (try new features) | https://<owner>.github.io/strecke-next/ | branch `round4-port`, repository `strecke-next`; installs as "Strecke Next" with an amber NEXT icon | IndexedDB `strecke-next`, localStorage `strecke-next:*`, caches `strecke-next-*` |
+| **Next** (try new features) | https://<owner>.github.io/strecke-next/ | branch `release-1` (from `round4-port`), repository `strecke-next`, deployed with `tools/release.ts` ([RELEASES.md](RELEASES.md)); installs as "Strecke Next" with an amber NEXT icon | IndexedDB `strecke-next`, localStorage `strecke-next:*`, caches `strecke-next-*` |
 | Old live site | https://<owner>.github.io/strecke/ | `main`, by `.github/workflows/pages.yml` (push to `main` or manual run only) | IndexedDB/localStorage `strecke*`, caches `strecke-<hash>` |
 
-Build Next: `VITE_NS=next npx vite build --outDir dist-next` in `app/`. Data moves from Stable to Next only through a backup file: *Export* in Stable, *Restore from backup* in Next (with a dry run).
+Build Next: `VITE_NS=next npx vite build --outDir dist-next` in `app/`; deploy and roll back only with `node tools/release.ts` (dry run unless `--yes`, see [RELEASES.md](RELEASES.md)). Data moves from Stable to Next only through a backup file: *Export* in Stable, *Restore from backup* in Next (with a dry run).
 
 ## How it works today
 
