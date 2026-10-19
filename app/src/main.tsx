@@ -16,6 +16,12 @@ import { applyAppearance, loadSettings } from './state/settings';
 
 const sw = 'serviceWorker' in navigator && import.meta.env.PROD ? navigator.serviceWorker : null;
 const updater = sw ? initUpdater(sw, () => location.reload()) : null;
+const devQ = import.meta.env.DEV ? new URLSearchParams(location.search) : null;
+if (devQ?.has('update')) {
+  // Design review only: show the "Update ready" row without a service worker.
+  const w = { state: 'installed', postMessage() {}, addEventListener() {} };
+  initUpdater({ controller: {}, addEventListener() {} }, () => {}).watch({ waiting: w, installing: null, active: w, addEventListener() {}, update: async () => undefined });
+}
 
 /**
  * At app start, before the first card: if a new build is waiting, take it now (one reload). Never later
@@ -36,6 +42,7 @@ async function updateAtStart(): Promise<boolean> {
     history.replaceState(null, '', location.pathname);
   }
   if (await updateAtStart()) return;
+  if (devQ?.has('newer')) throw new NewerDataError(3, 2); // design review only: the version-guard screen
   const app = await openAppStore(NS);
   const [settings, device] = await Promise.all([loadSettings(app.kv), loadDevice(app.kv)]);
   const devLang = import.meta.env.DEV ? new URLSearchParams(location.search).get('lang') : null;
@@ -47,7 +54,8 @@ async function updateAtStart(): Promise<boolean> {
 })().catch((err) => {
   if (err instanceof NewerDataError) {
     // Data from a newer build: show why, offer Export, write nothing.
-    setLocale(navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en');
+    const devLang = devQ?.get('lang');
+    setLocale(devLang === 'de' || devLang === 'en' ? devLang : navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en');
     render(<NewerData stored={err.stored} known={err.known} />, document.getElementById('app')!);
     return;
   }

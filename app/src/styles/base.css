@@ -154,7 +154,7 @@ input.slot { width: 6em; max-width: 100%; color: var(--ink); font-size: 1em; out
 .stats dd { margin: 0; font: 700 40px/1 var(--f-display); font-variant-numeric: tabular-nums; }
 .stats .sec dd { color: var(--teal-text); }
 .link { align-self: flex-start; margin-top: 18px; background: none; border: 0; border-bottom: 2px solid var(--ink); padding: 6px 0; font: 600 17px var(--f-body); min-height: 40px; }
-.end { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.end { flex: 1; display: flex; flex-direction: column; justify-content: center; justify-content: safe center; gap: 12px; min-height: 0; overflow-y: auto; }
 .end h1 { font: 700 56px/1 var(--f-display); }
 .end p { color: var(--ink2); font: 400 18px/1.35 var(--f-body); }
 .nav { display: flex; justify-content: center; gap: 8px; }

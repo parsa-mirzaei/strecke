@@ -40,7 +40,7 @@ async function audit(page: Page): Promise<string[]> {
       if (!r.width || !r.height) continue;
       if (r.left < ar.left - 1 || r.right > ar.right + 1) out.push(`sticks out sideways: ${desc(el)}`);
       const zone = el.closest('.top, .mid, .act, .sum, .page, .end');
-      const scroller = el.closest('.mid, .page, .tags, .chips, .sum');
+      const scroller = el.closest('.mid, .page, .tags, .chips, .sum, .end');
       if (zone && !scroller) {
         const zr = zone.getBoundingClientRect();
         if (r.top < zr.top - 1 || r.bottom > zr.bottom + 1) out.push(`outside its zone: ${desc(el)}`);
@@ -141,11 +141,41 @@ async function screens(page: Page, lang: Lang, scale: number, demo: boolean) {
   await page.getByRole('button', { name: L['nav.settings'] }).first().click();
   await page.waitForSelector('.page');
   await check('settings');
-  await page.getByRole('button', { name: new RegExp(L['set.page.daten']) }).click();
-  await page.waitForSelector('.page');
-  await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
-  await check('data');
+  const openPage = async (key: 'set.page.uebungen' | 'set.page.sheet' | 'set.page.fill' | 'set.page.daten', name: string) => {
+    await page.getByRole('button', { name: new RegExp(`^${L[key]}`) }).click();
+    await page.waitForSelector('.page');
+    await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+    await check(name);
+    await page.locator('.top').getByRole('button').first().click(); // back to the menu
+    await page.waitForSelector('.menu');
+  };
+  await openPage('set.page.uebungen', 'practice');
+  await openPage('set.page.sheet', 'sheet');
+  // Fill my list, after "Generate now" (copied, with the assistant links, or the copy-failed note).
+  await page.getByRole('button', { name: new RegExp(`^${L['set.page.fill']}`) }).click();
+  await page.waitForSelector('.prompt-out');
+  await page.getByRole('button', { name: L['fill.generate'], exact: true }).click();
+  await page.waitForSelector('[role=status]');
+  await check('fill');
+  await page.locator('.top').getByRole('button').first().click();
+  await page.waitForSelector('.menu');
+  await openPage('set.page.daten', 'data');
   return out;
+}
+
+/** Two snapshots in this dev build's snapshot database, so the Data page lists them. */
+async function seedSnapshots(page: Page) {
+  await page.goto('/?demo');
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    const r = indexedDB.open('strecke-snapshots', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('snapshots', { keyPath: 'id', autoIncrement: true });
+    r.onsuccess = () => {
+      const tx = r.result.transaction('snapshots', 'readwrite');
+      tx.objectStore('snapshots').clear();
+      for (const at of [Date.UTC(2026, 9, 1), Date.UTC(2026, 9, 15)]) tx.objectStore('snapshots').add({ at, from: 2, to: 3, dump: { meta: [], events: [] } });
+      tx.oncomplete = () => { r.result.close(); resolve(); };
+    };
+  }));
 }
 
 for (const lang of Object.keys(LANGS) as Lang[]) {
@@ -153,12 +183,38 @@ for (const lang of Object.keys(LANGS) as Lang[]) {
     for (const [w, h] of SIZES) {
       for (const scale of [1, 1.3]) {
         for (const demo of [false, true]) {
-          test(`screens (${demo ? 'demo' : 'connected sheet, 500 rows'}), ${lang}, ${theme}, ${w}x${h}, text ${scale * 100}%`, async ({ page }) => {
+          test(`screens (${demo ? 'demo' : 'connected sheet, 500 rows'}), ${lang}, ${theme}, ${w}x${h}, text ${scale * 100}%`, async ({ page, context }) => {
+            await context.grantPermissions(['clipboard-read', 'clipboard-write']);
             await page.emulateMedia({ colorScheme: theme });
             await page.setViewportSize({ width: w, height: h });
+            await seedSnapshots(page);
             for (const [name, problems] of await screens(page, lang, scale, demo)) expect(problems, name).toEqual([]);
           });
         }
+      }
+    }
+  }
+}
+
+for (const lang of Object.keys(LANGS) as Lang[]) {
+  for (const theme of THEMES) {
+    for (const [w, h] of SIZES) {
+      for (const scale of [1, 1.3]) {
+        test(`update row and version-guard screen, ${lang}, ${theme}, ${w}x${h}, text ${scale * 100}%`, async ({ page }) => {
+          await page.emulateMedia({ colorScheme: theme });
+          await page.setViewportSize({ width: w, height: h });
+          await open(page, `/?demo&update=1&force=bedeutung&lang=${lang}`);
+          await answer(page);
+          await page.getByRole('button', { name: LANGS[lang]['common.done'], exact: true }).click();
+          await page.locator('.act').getByRole('button', { name: LANGS[lang]['common.done'], exact: true }).click();
+          await page.waitForSelector('.update-row');
+          if (scale !== 1) await scaleText(page, scale);
+          expect(await audit(page), 'end with update row').toEqual([]);
+          await open(page, `/?newer=1&lang=${lang}`);
+          if (scale !== 1) await scaleText(page, scale);
+          expect(await audit(page), 'newer data').toEqual([]);
+          await expect(page.getByRole('button', { name: LANGS[lang]['newer.export'] })).toBeVisible();
+        });
       }
     }
   }
