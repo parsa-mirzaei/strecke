@@ -26,6 +26,16 @@ export const SHEET_COLUMNS = [
 ] as const;
 export type SheetColumn = (typeof SHEET_COLUMNS)[number];
 
+/**
+ * The header row the template writes (docs/template, tools/template/make_template.py; a test keeps them
+ * equal). Round 4's names; each maps to a canonical column through `ALIASES`. Used when no sheet is connected.
+ */
+export const TEMPLATE_HEADERS = [
+  'word', 'article', 'plural', 'meaning', 'pos', 'topic', 'example', 'example_translation', 'example_form',
+  'example_2', 'example_2_translation', 'example_2_form', 'collocation', 'prep', 'note', 'wrong_1', 'wrong_2',
+  'level', 'source', 'added', 'verified', 'id',
+] as const;
+
 /** Only the word column is required for a sheet to be read; a row also needs a meaning to be practised. */
 export const REQUIRED: readonly SheetColumn[] = ['de'];
 

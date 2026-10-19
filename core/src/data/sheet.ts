@@ -64,7 +64,7 @@ export class SheetAdapter implements DataAdapter {
     const archived = Object.values(lib.items).filter((x) => x.status === 'archived').length;
     const source: SourceInfo = {
       lastSync: lib.lastSync, lastAttempt: log.lastAttempt, lastError: log.lastError,
-      issues: log.lastReport?.issues ?? [], duplicates: log.lastReport?.duplicates ?? [], unknownColumns: log.lastReport?.unknownColumns ?? [], archived,
+      issues: log.lastReport?.issues ?? [], duplicates: log.lastReport?.duplicates ?? [], unknownColumns: log.lastReport?.unknownColumns ?? [], header: log.lastReport?.header ?? null, archived,
       inbox: log.inbox, schema: log.schema,
     };
     return {

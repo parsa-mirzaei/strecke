@@ -13,19 +13,23 @@ const WORD = new Set(['de', 'wort', 'word', 'lemma', 'deutsch', 'german', 'begri
 const PROCESSED = new Set(['processed', 'done', 'erledigt', 'verarbeitet', 'filled', 'added']);
 
 export type InboxRead =
-  | { ok: true; total: number; waiting: number; processed: number }
+  | { ok: true; total: number; waiting: number; processed: number; header?: string[] }
   | { ok: false; problem: 'empty' | 'no_word_column' | 'unreachable' };
+
+/** Which Inbox columns hold the word and the processed date (-1 when absent). The one definition, also used by "Fill my list". */
+export function inboxColumns(header: readonly string[]): { word: number; processed: number } {
+  const head = header.map((h) => foldHeader(String(h ?? '')));
+  return { word: head.findIndex((h) => WORD.has(h)), processed: head.findIndex((h) => PROCESSED.has(h)) };
+}
 
 export function readInbox(table: readonly (readonly string[])[]): InboxRead {
   const rows = table.filter((r) => r.some((c) => clean(String(c ?? ''))));
   if (!rows.length) return { ok: false, problem: 'empty' };
-  const head = rows[0]!.map((h) => foldHeader(String(h ?? '')));
-  const w = head.findIndex((h) => WORD.has(h));
+  const { word: w, processed: p } = inboxColumns(rows[0]!);
   if (w < 0) return { ok: false, problem: 'no_word_column' };
-  const p = head.findIndex((h) => PROCESSED.has(h));
   const items = rows.slice(1).filter((r) => clean(String(r[w] ?? '')));
   const processed = p < 0 ? 0 : items.filter((r) => clean(String(r[p] ?? ''))).length;
-  return { ok: true, total: items.length, waiting: items.length - processed, processed };
+  return { ok: true, total: items.length, waiting: items.length - processed, processed, header: rows[0]!.map((h) => clean(String(h ?? ''))) };
 }
 
 export type SchemaCheck =

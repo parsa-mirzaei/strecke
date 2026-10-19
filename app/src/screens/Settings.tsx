@@ -9,18 +9,19 @@ import { estimateChars } from '../audio/service';
 import { explain, listModels, listVoices, type ModelInfo, type VoiceInfo } from '../audio/elevenlabs';
 import { speech, type VoiceStatus } from '../audio/tts';
 import { clearStore } from '../data/idb';
-import { formatNumber, t, type StringKey } from '../i18n';
+import { formatDate, formatNumber, t, type StringKey } from '../i18n';
 import { APP_NAME, LANGUAGE_NAMES, PROVIDER_NAME, SAMPLE_SENTENCE } from '../i18n/names';
 import { CHANNEL, LS_PREFIX } from '../ns';
 import { kindLabel } from '../run/parts';
 import { Icon } from '../ui/Icon';
 import { UpdateRow } from '../ui/UpdateRow';
 import { LICENCES } from './licences';
+import { FillMyList } from './FillMyList';
 import { SheetSection } from './SheetSection';
 import { StorageSection } from './StorageSection';
 
-type Page = 'uebungen' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
-const PAGES: readonly Page[] = ['uebungen', 'audio', 'daten', 'darstellung', 'ziele', 'ueber'];
+type Page = 'uebungen' | 'sheet' | 'fill' | 'audio' | 'daten' | 'darstellung' | 'ziele' | 'ueber';
+const PAGES: readonly Page[] = ['uebungen', 'sheet', 'fill', 'audio', 'daten', 'darstellung', 'ziele', 'ueber'];
 const GATES: ExerciseType[] = ['luecke', 'tippen', 'kontext2'];
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
@@ -209,22 +210,12 @@ const COLUMN_LABEL: Record<string, StringKey> = {
   collocation: 'data.col.collocation', prep: 'data.col.prep', article: 'data.col.article', 'wrong_1, wrong_2': 'data.col.wrong',
 };
 
-function Daten({ ctx }: { ctx: Ctx }) {
-  const [confirm, setConfirm] = useState(false);
+/** Settings › Sheet: where the words come from, how to add words, what rows could use. */
+function SheetPage({ ctx }: { ctx: Ctx }) {
   const thin = useMemo(() => thinRows(ctx.words), [ctx.words]);
-
-  async function reset() {
-    ctx.app.close();
-    await clearStore();
-    await audioCache.clear();
-    try { Object.keys(localStorage).filter((k) => k.startsWith(LS_PREFIX)).forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ }
-    location.reload();
-  }
-
   return (
     <>
       <SheetSection ctx={ctx} />
-
       <p class="kicker">{t('data.missing')}</p>
       {thin.rows.length === 0 ? <p class="note">{t('data.allGood')}</p> : (
         <>
@@ -246,7 +237,24 @@ function Daten({ ctx }: { ctx: Ctx }) {
           </More>
         </>
       )}
+    </>
+  );
+}
 
+/** Settings › Data: storage on this device, backup, snapshots, reset. */
+function Daten({ ctx }: { ctx: Ctx }) {
+  const [confirm, setConfirm] = useState(false);
+
+  async function reset() {
+    ctx.app.close();
+    await clearStore();
+    await audioCache.clear();
+    try { Object.keys(localStorage).filter((k) => k.startsWith(LS_PREFIX)).forEach((k) => localStorage.removeItem(k)); } catch { /* storage blocked */ }
+    location.reload();
+  }
+
+  return (
+    <>
       <StorageSection ctx={ctx} />
 
       <More title={t('data.reset')}>
@@ -316,7 +324,9 @@ export function SettingsScreen({ ctx, onBack }: { ctx: Ctx; onBack: () => void }
   const summary: Record<Page, string> = {
     uebungen: t('set.sum.uebungen', { len: s.runLength, new: s.newPerRun }),
     audio: s.audio.provider === 'device' ? t('set.sum.device') : PROVIDER_NAME,
-    daten: t('set.sum.daten', { source: ctx.adapter.kind === 'sheet' ? t('set.sum.sheet') : t('set.sum.demo'), n: ctx.words.length }),
+    sheet: t('set.sum.daten', { source: ctx.adapter.kind === 'sheet' ? t('set.sum.sheet') : t('set.sum.demo'), n: ctx.words.length }),
+    fill: t('set.sum.fill'),
+    daten: ctx.device.lastBackupAt ? t('backup.last', { date: formatDate(ctx.device.lastBackupAt) }) : t('backup.never'),
     darstellung: s.theme === 'system' ? t('set.sum.system') : s.theme === 'light' ? t('look.light') : t('look.dark'),
     ziele: s.goal.enabled ? t('set.sum.goal', { n: s.goal.runsPerWeek }) : t('common.off'),
     ueber: t('set.sum.version', { v: __APP_VERSION__ }),
@@ -348,6 +358,8 @@ export function SettingsScreen({ ctx, onBack }: { ctx: Ctx; onBack: () => void }
           </>
         ) : page === 'uebungen' ? <Uebungen ctx={ctx} set={set} />
           : page === 'audio' ? <AudioGroup ctx={ctx} set={set} />
+          : page === 'sheet' ? <SheetPage ctx={ctx} />
+          : page === 'fill' ? <FillMyList ctx={ctx} />
           : page === 'daten' ? <Daten ctx={ctx} />
           : page === 'darstellung' ? <Darstellung ctx={ctx} set={set} />
           : page === 'ziele' ? <Ziele ctx={ctx} set={set} />

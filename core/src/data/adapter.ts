@@ -27,6 +27,8 @@ export interface SourceInfo {
   issues: Array<{ line: number; de: string; notes: Note[]; skipped: boolean }>;
   duplicates: Array<{ line: number; de: string; firstLine: number }>;
   unknownColumns: string[];
+  /** The Words tab's header row as last read; null before the first good read. */
+  header: string[] | null;
   archived: number;
   /** The optional Inbox tab as last read; null when none is connected. */
   inbox: InboxRead | null;

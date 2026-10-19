@@ -98,7 +98,7 @@ describe('identity', () => {
 describe('optional tabs', () => {
   it('Inbox: counts waiting and processed words; aliases in German', () => {
     expect(readInbox([['Wort', 'Notiz', 'Erledigt'], ['Schrank', '', ''], ['Fenster', 'im Bus gehört', '2026-10-10'], ['', '', '']]))
-      .toEqual({ ok: true, total: 2, waiting: 1, processed: 1 });
+      .toEqual({ ok: true, total: 2, waiting: 1, processed: 1, header: ['Wort', 'Notiz', 'Erledigt'] });
     expect(readInbox([['foo'], ['bar']])).toEqual({ ok: false, problem: 'no_word_column' });
     expect(readInbox([])).toEqual({ ok: false, problem: 'empty' });
   });

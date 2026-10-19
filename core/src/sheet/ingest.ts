@@ -62,6 +62,8 @@ export interface IngestReport {
   /** The same word twice in the sheet: later lines are ignored. */
   duplicates: Array<{ line: number; de: string; firstLine: number }>;
   unknownColumns: string[];
+  /** The header row exactly as the sheet writes it (for "Fill my list"). */
+  header?: string[];
   /** True when the library content changed (lastSync aside). */
   changed: boolean;
 }
@@ -97,6 +99,7 @@ export function ingest(prev: Library | null, table: readonly (readonly string[])
   if (h < 0) return { library: prev ?? emptyLibrary(), report: { ...report, ok: false, error: table.length ? 'no_header' : 'empty' } };
   const map = mapHeader(table[h]!);
   report.unknownColumns = map.unknown;
+  report.header = table[h]!.map((c) => clean(String(c ?? '')));
 
   // 1. Clean every row; collect usable ones.
   interface Incoming { line: number; row: Row; base: string; full: string; hash: string; explicitId: string; sheetId: string }

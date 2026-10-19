@@ -20,7 +20,7 @@ describe('sheet template', () => {
     expect(c.notes).toEqual([]);
   });
   it('the Inbox and Meta tabs read as the app expects', () => {
-    expect(readInbox(read('Inbox.csv'))).toEqual({ ok: true, total: 0, waiting: 0, processed: 0 });
+    expect(readInbox(read('Inbox.csv'))).toEqual({ ok: true, total: 0, waiting: 0, processed: 0, header: ['word', 'note', 'processed'] });
     expect(readSchemaVersion(read('Meta.csv'))).toEqual({ status: 'same' });
   });
 });
