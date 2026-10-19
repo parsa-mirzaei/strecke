@@ -60,6 +60,7 @@ function Uebungen({ ctx, set }: { ctx: Ctx; set: (f: (s: Settings) => Settings) 
   return (
     <>
       <Field label={t('ex.newPerRun')} note={t('ex.newPerRunNote')}><Stepper label={t('ex.newPerRun')} value={s.newPerRun} min={LIMITS.newPerRun[0]} max={Math.min(LIMITS.newPerRun[1], s.runLength)} onChange={(v) => set((x) => ({ ...x, newPerRun: v }))} /></Field>
+      <Field label={t('ex.newPerDay')} note={t('ex.newPerDayNote')}><Stepper label={t('ex.newPerDay')} value={s.newPerDay} min={LIMITS.newPerDay[0]} max={LIMITS.newPerDay[1]} onChange={(v) => set((x) => ({ ...x, newPerDay: v }))} /></Field>
       <Field label={t('ex.runLength')} note={t('ex.runLengthNote')}><Stepper label={t('ex.runLength')} value={s.runLength} min={LIMITS.runLength[0]} max={LIMITS.runLength[1]} onChange={(v) => set((x) => ({ ...x, runLength: v }))} /></Field>
       <p class="kicker">{t('ex.types')}</p>
       {EXERCISE_TYPES.filter((type) => type !== 'karte').map((type) => (
@@ -322,7 +323,7 @@ export function SettingsScreen({ ctx, onBack }: { ctx: Ctx; onBack: () => void }
   const set = (f: (s: Settings) => Settings) => ctx.setSettings(parseSettings(f(ctx.settings)));
   const s = ctx.settings;
   const summary: Record<Page, string> = {
-    uebungen: t('set.sum.uebungen', { len: s.runLength, new: s.newPerRun }),
+    uebungen: t('set.sum.uebungen', { len: s.runLength, day: s.newPerDay }),
     audio: s.audio.provider === 'device' ? t('set.sum.device') : PROVIDER_NAME,
     sheet: t('set.sum.daten', { source: ctx.adapter.kind === 'sheet' ? t('set.sum.sheet') : t('set.sum.demo'), n: ctx.words.length }),
     fill: t('set.sum.fill'),

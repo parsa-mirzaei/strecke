@@ -25,7 +25,7 @@ flowchart LR
 | --- | --- | --- |
 | Word records | Sheet columns (`de`, `en`, `article`, `plural`, `example_*`, `collocation`, `prep`, `note`, `wrong_*`, `domain`, `tier`) | what can be asked, and the distractor pool |
 | Event log | device (IndexedDB), synced to the Sheet's `events` tab | FSRS state, ladder stage, confusions, runs, dashboard |
-| Settings | device | switched-off types, run length, new cards per run, run gap |
+| Settings | device | switched-off types, run length, new cards per run, new words per day, run gap |
 | Seed (string) | the app, per run | tie-breaks only; same inputs and seed give the same run |
 | Voice available? | device | Hören is left out without a German voice |
 
@@ -103,7 +103,9 @@ Each word has a stage 0–5 (replayed from the log) and an FSRS-5 memory state (
 
 1. Playable words: active, with at least one exercise.
 2. **Reviews**: due words first (FSRS due time passed), lowest predicted recall first; then words not due, lowest recall first. Equal recall breaks by a seeded jitter.
-3. **New words**: at most *new cards per run* (default 2), oldest-added first, then in sheet order, in a 2/3 core, 1/3 chunk mix. **Reviews first:** new words only take the room due words leave in the run, so a burst of 40 new rows trickles in at most two per run, and a pile of due words pauses new ones; the learner never sees a count. A sheet with nothing to review yet gets one extra new card, so a first run is not a single card.
+3. **New words**: at most *new cards per run* (default 2), oldest-added first, then in sheet order, in a 2/3 core, 1/3 chunk mix. A sheet with nothing to review yet gets one extra new card, so a first run is not a single card.
+
+   **New words per day** (setting, default 10, 0–30; release-1, DECISIONS R5-5). A word is new on the day of its first answer (local calendar day). Runs introduce new words until today's count reaches the cap, then none until the next day. The cap does not depend on how many reviews are due: new words get their place in a run even when due words could fill it, and the reviews that do not fit stay due for the next run. 0 means no new words at all. This replaces the earlier "reviews first" room rule and the silent backlog pause; the learner still never sees a count.
 4. **Order**: new cards are spread through the run, never first when a review can open it.
 5. **Exercise per card** by the ladder above.
 6. A word appears at most once per run. A missed card is not repeated in the same run; FSRS brings it back soon.

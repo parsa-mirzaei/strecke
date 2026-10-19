@@ -3,9 +3,9 @@ import { exercisesFor, EXERCISE_TYPES, type Exercise, type ExerciseType } from '
 import { toWordRecord, type WordRecord } from '../src/record.ts';
 import { buildConfusions, collocationSplit, meaningsOverlap, sameStem } from '../src/engine/distractors.ts';
 import { eligibleTypes, rowEligibility, thinRows } from '../src/engine/eligibility.ts';
-import { chooseForRun, composeRun, effortCeiling, EFFORT } from '../src/engine/run.ts';
+import { chooseForRun, composeRun, effortCeiling, EFFORT, newToday } from '../src/engine/run.ts';
 import { gapExceeded, splitRuns } from '../src/engine/runs.ts';
-import { DEFAULT_SETTINGS } from '../src/engine/settings.ts';
+import { DEFAULT_SETTINGS, parseSettings } from '../src/engine/settings.ts';
 import { DEFAULT_CONFIG, eventFromRow, eventToRow, initialState, ratingFor, replay, step, type LearnEvent, type WordState } from '../src/scheduler.ts';
 import { by, rec, ROWS, sheet } from './fixtures/engine-sheet.ts';
 
@@ -333,16 +333,16 @@ describe('run composition', () => {
     expect(new Set(run.map((c) => c.word.id)).size).toBe(6);
     expect(run.filter((c) => c.reason === 'new').length).toBeLessThanOrEqual(DEFAULT_SETTINGS.newPerRun);
     for (let i = 1; i < run.length; i++) expect(run[i]!.exercise.type).not.toBe(run[i - 1]!.exercise.type);
-    expect(run.filter((c) => c.reason === 'new').length).toBe(0); // ten due words fill the run: reviews first
+    expect(run.filter((c) => c.reason === 'new').length).toBe(DEFAULT_SETTINGS.newPerRun); // new words come even with ten due (S3)
     const light = composeRun({ ...base, events: learned(3), now: T0 + 30 * DAY });
     expect(light.filter((c) => c.reason === 'new').length).toBe(DEFAULT_SETTINGS.newPerRun);
   });
-  it('a burst of new rows trickles in: never more than the cap per run, none while due words fill the run', () => {
+  it('a burst of new rows trickles in: never more than the cap per run, also while due words could fill the run', () => {
     const big = [...all, ...Array.from({ length: 40 }, (_, i) => rec({ de: `Neuwort${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, article: 'das', en: `newword ${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + Math.floor(i / 26))}`, pos: 'noun' }))];
     const run = composeRun({ ...base, words: big, events: learned(3), now: T0 + 30 * DAY });
     expect(run.filter((c) => c.reason === 'new').length).toBeLessThanOrEqual(DEFAULT_SETTINGS.newPerRun);
     const full = composeRun({ ...base, words: big, events: learned(12), now: T0 + 30 * DAY });
-    expect(full.filter((c) => c.reason === 'new')).toHaveLength(0);
+    expect(full.filter((c) => c.reason === 'new')).toHaveLength(DEFAULT_SETTINGS.newPerRun);
   });
   it('does not open with a new word when a review can open the run', () => {
     const run = composeRun({ ...base, events: learned(10), now: T0 + 30 * DAY });
@@ -399,9 +399,10 @@ describe('run composition', () => {
     const run = composeRun({ ...base, words: all.map((w) => ({ ...w, status: 'pending' })) });
     expect(run).toEqual([]);
   });
-  it('a large backlog silently pauses new words', () => {
+  it('many due words no longer pause new words; the reviews that do not fit stay due', () => {
     const run = composeRun({ ...base, events: learned(12), now: T0 + 30 * DAY, config: { ...DEFAULT_CONFIG, backlogPause: 3 } });
-    expect(run.some((c) => c.reason === 'new')).toBe(false);
+    expect(run.filter((c) => c.reason === 'new')).toHaveLength(DEFAULT_SETTINGS.newPerRun);
+    expect(run.filter((c) => c.reason === 'due')).toHaveLength(DEFAULT_SETTINGS.runLength - DEFAULT_SETTINGS.newPerRun);
   });
   it('different seeds may vary distractor ties and exercise variety, never the rules', () => {
     for (const seed of ['p', 'q', 'r', 's', 't']) {
@@ -455,5 +456,54 @@ describe('plain data in the record (no card carries content the sheet does not)'
   it('toWordRecord keeps plural and collocation as typed', () => {
     const w = toWordRecord({ word_id: 'w_x0000001', de: 'Termin', article: 'der', plural: 'Termine', en: 'appointment', pos: 'noun', collocation: 'einen Termin machen' });
     expect([w.plural, w.collocation]).toEqual(['Termine', 'einen Termin machen']);
+  });
+});
+
+describe('new words per day (S3)', () => {
+  const all = sheet();
+  const DAY0 = new Date(T0 + 30 * DAY).setHours(0, 0, 0, 0);
+  const base = { words: all, now: DAY0 + 18 * 3_600_000, seed: 's3', canListen: true, dayStart: DAY0 };
+  const learned = (count: number) => all.slice(0, count).flatMap((w, i) => [
+    ev(w, { exercise: 'karte', rating: 3, correct: true, ts: T0 - (20 + i) * DAY }),
+    ev(w, { exercise: 'luecke', ts: T0 - (19 + i) * DAY }),
+  ]);
+  /** `n` words introduced earlier today (first answer after dayStart). */
+  const introducedToday = (n: number) => all.slice(12, 12 + n).map((w, i) => ev(w, { exercise: 'karte', rating: 3, correct: true, ts: DAY0 + (i + 1) * 60_000 }));
+  const news = (run: { reason: string }[]) => run.filter((c) => c.reason === 'new').length;
+
+  it('default 10, allowed 0–30', () => {
+    expect(DEFAULT_SETTINGS.newPerDay).toBe(10);
+    expect(parseSettings({ newPerDay: 99 }).newPerDay).toBe(30);
+    expect(parseSettings({ newPerDay: -3 }).newPerDay).toBe(0);
+    expect(parseSettings({}).newPerDay).toBe(10);
+  });
+
+  it('the cap is respected across the day: runs add new words until it is reached, then none', () => {
+    const settings = { ...DEFAULT_SETTINGS, newPerDay: 3 };
+    expect(news(composeRun({ ...base, events: [...learned(4), ...introducedToday(1)], settings }))).toBe(2);
+    expect(news(composeRun({ ...base, events: [...learned(4), ...introducedToday(2)], settings }))).toBe(1);
+    expect(news(composeRun({ ...base, events: [...learned(4), ...introducedToday(3)], settings }))).toBe(0);
+    expect(newToday([...learned(4), ...introducedToday(3)], DAY0)).toBe(3);
+  });
+
+  it('the next day starts a fresh allowance', () => {
+    const settings = { ...DEFAULT_SETTINGS, newPerDay: 3 };
+    const events = [...learned(4), ...introducedToday(3)];
+    expect(news(composeRun({ ...base, events, settings, now: DAY0 + 30 * 3_600_000, dayStart: DAY0 + DAY }))).toBe(DEFAULT_SETTINGS.newPerRun);
+  });
+
+  it('independent of how many reviews are due: same new words with 2 or 12 due, and the rest stays due', () => {
+    for (const due of [2, 12]) {
+      const run = composeRun({ ...base, events: learned(due) });
+      expect(news(run), `${due} due`).toBe(DEFAULT_SETTINGS.newPerRun);
+    }
+    const many = composeRun({ ...base, events: learned(12) });
+    expect(many.filter((c) => c.reason === 'due')).toHaveLength(DEFAULT_SETTINGS.runLength - DEFAULT_SETTINGS.newPerRun);
+  });
+
+  it('0 means no new words, even on a fresh sheet', () => {
+    const settings = { ...DEFAULT_SETTINGS, newPerDay: 0 };
+    expect(composeRun({ ...base, events: [], settings })).toEqual([]);
+    expect(news(composeRun({ ...base, events: learned(3), settings }))).toBe(0);
   });
 });

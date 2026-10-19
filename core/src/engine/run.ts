@@ -28,7 +28,7 @@ export interface RunCard {
 export interface ComposeInput {
   words: readonly WordRecord[];
   events: readonly LearnEvent[];
-  settings?: Pick<Settings, 'runLength' | 'newPerRun' | 'disabled'>;
+  settings?: Pick<Settings, 'runLength' | 'newPerRun' | 'disabled'> & Partial<Pick<Settings, 'newPerDay'>>;
   config?: EngineConfig;
   now: number;
   seed: string;
@@ -36,6 +36,17 @@ export interface ComposeInput {
   canListen: boolean;
   /** Words the learner chose to practise ("Diese üben"): they come first and no new words are added. */
   focus?: readonly string[];
+  /** Start of the learner's current day (for the daily cap on new words); default: local midnight before `now`. */
+  dayStart?: number;
+}
+
+/** Words whose first answer falls on or after `dayStart`: today's new words. */
+export function newToday(events: readonly LearnEvent[], dayStart: number): number {
+  const first = new Map<string, number>();
+  for (const e of events) { const f = first.get(e.wordId); if (f === undefined || e.ts < f) first.set(e.wordId, e.ts); }
+  let n = 0;
+  for (const ts of first.values()) if (ts >= dayStart) n++;
+  return n;
 }
 
 /** Rough effort of an exercise, 0 (look) to 3 (produce). Variety picks stay at or below the ceiling set by recall. */
@@ -223,12 +234,12 @@ export function composeRun(input: ComposeInput): RunCard[] {
   const focusIds = new Set(focus.map((w) => w.id));
 
   const total = Math.max(1, settings.runLength);
-  const backlog = due.length >= config.backlogPause; // silent: slows new words, never shown
   const fresh = active.filter((w) => !st(w).introduced && playable(w));
-  // Reviews first: new words only take the room that due words leave in this run. A burst of new rows in
-  // the sheet therefore trickles in, and a pile of due words pauses new ones, silently.
-  const room = Math.max(0, total - due.length);
-  const newQuota = focus.length || backlog ? 0 : Math.min(settings.newPerRun, fresh.length, room);
+  // New words per day (setting, default 10): introduced up to the daily cap whatever is due, at most
+  // `newPerRun` per run; due reviews that do not fit stay due for the next run. Never shown as a count.
+  const dayStart = input.dayStart ?? new Date(now).setHours(0, 0, 0, 0);
+  const capLeft = Math.max(0, (settings.newPerDay ?? DEFAULT_SETTINGS.newPerDay) - newToday(input.events, dayStart));
+  const newQuota = focus.length ? 0 : Math.min(settings.newPerRun, fresh.length, capLeft, total);
 
   const reviewPool = [
     ...focus.map((w) => ({ w, reason: 'focus' as CardReason })),
@@ -237,7 +248,7 @@ export function composeRun(input: ComposeInput): RunCard[] {
   ];
   const reviews = reviewPool.slice(0, total - newQuota);
   // Only a sheet with nothing to review yet gets one more new card, so a first run is not a single card.
-  const extraNew = !focus.length && !backlog && reviews.length === 0 && fresh.length > newQuota && total > newQuota ? 1 : 0;
+  const extraNew = !focus.length && reviews.length === 0 && fresh.length > newQuota && total > newQuota && capLeft > newQuota ? 1 : 0;
   const news = pickNew(fresh, newQuota + extraNew).map((w) => ({ w, reason: 'new' as CardReason }));
 
   const n = reviews.length + news.length;

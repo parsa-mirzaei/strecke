@@ -152,7 +152,7 @@ export const en = {
   'set.page.darstellung': 'Appearance',
   'set.page.ziele': 'Goals',
   'set.page.ueber': 'About',
-  'set.sum.uebungen': '{len} cards per run, {new} new',
+  'set.sum.uebungen': '{len} cards per run, up to {day} new words a day',
   'set.sum.device': 'Device voice',
   'set.sum.daten': '{source} · {n} words',
   'set.sum.sheet': 'Google Sheet',
@@ -187,6 +187,8 @@ export const en = {
   // Settings: exercises
   'ex.newPerRun': 'New cards per run',
   'ex.newPerRunNote': "Words you haven't seen before",
+  'ex.newPerDay': 'New words per day',
+  'ex.newPerDayNote': 'Added up to this number each day, also when many words come back for review. 0: no new words.',
   'ex.runLength': 'Cards per run',
   'ex.runLengthNote': 'A run is meant to be short',
   'ex.types': 'Exercise types',

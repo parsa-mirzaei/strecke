@@ -147,7 +147,7 @@ export const de: Record<StringKey, string> = {
   'set.page.darstellung': 'Darstellung',
   'set.page.ziele': 'Ziele',
   'set.page.ueber': 'Über',
-  'set.sum.uebungen': '{len} Karten pro Runde, {new} neue',
+  'set.sum.uebungen': '{len} Karten pro Runde, bis zu {day} neue Wörter am Tag',
   'set.sum.device': 'Gerätestimme',
   'set.sum.daten': '{source} · {n} Wörter',
   'set.sum.sheet': 'Google Sheet',
@@ -181,6 +181,8 @@ export const de: Record<StringKey, string> = {
 
   'ex.newPerRun': 'Neue Karten pro Runde',
   'ex.newPerRunNote': 'Wörter, die du zum ersten Mal siehst',
+  'ex.newPerDay': 'Neue Wörter pro Tag',
+  'ex.newPerDayNote': 'Bis zu dieser Zahl kommen jeden Tag neue dazu, auch wenn viele Wörter zur Wiederholung anstehen. 0: keine neuen Wörter.',
   'ex.runLength': 'Karten pro Runde',
   'ex.runLengthNote': 'Eine Runde ist kurz gedacht',
   'ex.types': 'Übungsarten',
