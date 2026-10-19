@@ -18,6 +18,7 @@ import { MemoryEventLog, MemoryStore, type EventLog, type KeyValueStore } from '
 import type { LearnEvent } from '@core/scheduler.ts';
 import { isLearnEvent } from './events';
 import { openDb, request, transact, type Migration } from './idb';
+import { NewerDataError, peekVersion, takeSnapshot } from './snapshot';
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 
@@ -166,12 +167,29 @@ class MemoryAppStore implements AppStore {
   close() {}
 }
 
-/** Open this channel's store; falls back to memory when IndexedDB cannot be opened. */
-export async function openAppStore(name: string, factory: IDBFactory | undefined = globalThis.indexedDB): Promise<AppStore> {
+/**
+ * Open this channel's store; falls back to memory when IndexedDB cannot be opened.
+ *
+ * Update safety (RELEASES.md): a database written by a newer build throws `NewerDataError` and is not
+ * opened; before any migration the whole database is copied into its snapshot database. `migrations` is
+ * a parameter for tests (a fixture schema step); the app always uses `MIGRATIONS`.
+ */
+export async function openAppStore(
+  name: string, factory: IDBFactory | undefined = globalThis.indexedDB, migrations: readonly Migration[] = MIGRATIONS, now: () => number = Date.now,
+): Promise<AppStore> {
   if (!factory) return new MemoryAppStore();
+  let stored = 0;
+  try { stored = await peekVersion(factory, name); } catch { /* unreadable: the open below decides */ }
+  if (stored > migrations.length) throw new NewerDataError(stored, migrations.length);
+  if (stored > 0 && stored < migrations.length) {
+    // The migration itself is all-or-nothing and keeps the old stores; the snapshot is the extra copy.
+    try { await takeSnapshot(factory, name, stored, migrations.length, now()); } catch (e) { console.warn('snapshot before migration failed', e); }
+  }
   try {
-    return new IdbAppStore(await openDb(factory, name, MIGRATIONS));
-  } catch {
+    return new IdbAppStore(await openDb(factory, name, migrations));
+  } catch (e) {
+    // Another tab of a newer build upgraded in between: same answer as above, never the memory fallback.
+    if ((e as { name?: string })?.name === 'VersionError') throw new NewerDataError(await peekVersion(factory, name).catch(() => stored), migrations.length);
     return new MemoryAppStore();
   }
 }

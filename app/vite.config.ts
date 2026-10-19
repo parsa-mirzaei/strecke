@@ -75,7 +75,12 @@ const CACHE = '${NS}-${version}';
 const PRECACHE = ${JSON.stringify(precache)};
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  // No skipWaiting here: an update waits until the page asks (a tap, or app start), never mid-run.
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
+});
+
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {

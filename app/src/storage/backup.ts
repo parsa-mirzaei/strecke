@@ -13,9 +13,11 @@ import { eventFromRow, eventToRow, type LearnEvent } from '@core/scheduler.ts';
 
 export interface BackupFile { name: string; text: string; answers: number }
 
+export const backupName = (now: number) => `strecke-backup-${new Date(now).toISOString().slice(0, 10)}.txt`;
+
 export function buildBackup(settings: Settings, events: readonly LearnEvent[], now: number, channel: string): BackupFile {
   const env = { ...makeExport(settings, events.map((e) => eventToRow(e)), now), channel };
-  return { name: `strecke-backup-${new Date(now).toISOString().slice(0, 10)}.txt`, text: JSON.stringify(env, null, 1), answers: events.length };
+  return { name: backupName(now), text: JSON.stringify(env, null, 1), answers: events.length };
 }
 
 export type Delivery = 'shared' | 'downloaded' | 'cancelled';

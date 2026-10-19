@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Ctx } from '../appctx';
 import { formatDate, t, type StringKey } from '../i18n';
+import { NS, CHANNEL } from '../ns';
 import { dryRun, type DryRun } from '../storage/backup';
 import { persistState, usageEstimate, type PersistState } from '../storage/persist';
+import { dumpToBackupText, readSnapshots, snapshotInfo, type SnapshotInfo, type StoredSnapshot } from '../storage/snapshot';
 import type { MigrationInfo } from '../storage/store';
 import { Icon } from '../ui/Icon';
 
@@ -28,8 +30,11 @@ export function StorageSection({ ctx }: { ctx: Ctx }) {
   const [plan, setPlan] = useState<Extract<DryRun, { ok: true }> | null>(null);
   const [withSettings, setWithSettings] = useState(true);
   const [msg, setMsg] = useState('');
+  const [snaps, setSnaps] = useState<StoredSnapshot[]>([]);
+  const log = ctx.adapter.kind === 'sheet' ? 'sheet' : 'demo';
 
   useEffect(() => {
+    void readSnapshots(globalThis.indexedDB, NS).then(setSnaps).catch(() => setSnaps([]));
     void persistState().then(setPersist);
     void usageEstimate().then(setUsage);
     void ctx.app.quarantineCount().then(setQuarantined);
@@ -47,7 +52,16 @@ export function StorageSection({ ctx }: { ctx: Ctx }) {
 
   async function pick(file: File | undefined) {
     if (!file) return;
-    const d = dryRun(await file.text(), ctx.eventIds, ctx.settings);
+    preview(await file.text());
+  }
+
+  /** A snapshot goes through the same dry run as a backup file. */
+  function pickSnapshot(snap: StoredSnapshot) {
+    preview(dumpToBackupText(snap.dump, snap.at, CHANNEL, log).text);
+  }
+
+  function preview(text: string) {
+    const d = dryRun(text, ctx.eventIds, ctx.settings);
     if (!d.ok) {
       setPlan(null);
       setMsg(t(`backup.err.${d.error}`));
@@ -81,12 +95,29 @@ export function StorageSection({ ctx }: { ctx: Ctx }) {
 
       <p class="kicker">{t('backup.title')}</p>
       <div class="field">
-        <div class="lbl">{ctx.device.lastBackupAt ? t('backup.last', { date: formatDate(ctx.device.lastBackupAt) }) : t('backup.never')}<small>{t('backup.note')}</small></div>
+        <div class="lbl">{ctx.device.lastBackupAt ? t('backup.last', { date: formatDate(ctx.device.lastBackupAt) }) : t('backup.never')}<small>{t('backup.lastNote')}</small></div>
       </div>
-      <div class="btn-row">
-        <button class="small-btn solid" type="button" onClick={() => void backup()}><Icon name="download" size={18} />{t('backup.create')}</button>
-        <label class="small-btn"><Icon name="upload" size={18} />{t('backup.restore')}<input type="file" accept=".txt,.json,text/plain,application/json" class="sr-only" onChange={(e) => void pick((e.currentTarget as HTMLInputElement).files?.[0])} /></label>
+      <div class="field">
+        <div class="lbl">{t('backup.create')}<small>{t('backup.note')}</small></div>
+        <button class="small-btn solid" type="button" onClick={() => void backup()}><Icon name="download" size={18} />{t('backup.export')}</button>
       </div>
+      <div class="field">
+        <div class="lbl">{t('backup.restore')}<small>{t('backup.restoreNote')}</small></div>
+        <label class="small-btn"><Icon name="upload" size={18} />{t('backup.import')}<input type="file" accept=".txt,.json,text/plain,application/json" class="sr-only" onChange={(e) => void pick((e.currentTarget as HTMLInputElement).files?.[0])} /></label>
+      </div>
+      <div class="field">
+        <div class="lbl">{t('snap.title')}<small>{snaps.length ? t('snap.note') : t('snap.none')}</small></div>
+      </div>
+      {snaps.length ? (
+        <ul class="snap-list">
+          {snaps.map((sn) => snapshotInfo(sn, log)).map((info: SnapshotInfo, i) => (
+            <li key={info.id}>
+              <span>{t('snap.item', { date: formatDate(info.at) })}<small>{t('snap.itemNote', { n: info.answers, from: info.from, to: info.to })}</small></span>
+              <button class="small-btn" type="button" onClick={() => pickSnapshot(snaps[i]!)}>{t('snap.restore')}</button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {plan ? (
         <div class="hint-box" role="region" aria-label={t('backup.preview')}>
           <p class="note"><b>{t('backup.previewTitle')}</b> {fromDate ? (plan.channel !== 'stable' ? t('backup.fromChannel', { date: fromDate, channel: plan.channel }) : t('backup.from', { date: fromDate })) : ''}</p>

@@ -14,6 +14,7 @@ import { APP_NAME, LANGUAGE_NAMES, PROVIDER_NAME, SAMPLE_SENTENCE } from '../i18
 import { CHANNEL, LS_PREFIX } from '../ns';
 import { kindLabel } from '../run/parts';
 import { Icon } from '../ui/Icon';
+import { UpdateRow } from '../ui/UpdateRow';
 import { LICENCES } from './licences';
 import { SheetSection } from './SheetSection';
 import { StorageSection } from './StorageSection';
@@ -333,6 +334,7 @@ export function SettingsScreen({ ctx, onBack }: { ctx: Ctx; onBack: () => void }
         {!page ? (
           <>
             {CHANNEL !== 'stable' ? <p class="note channel-note">{t('set.channelNote')}</p> : null}
+            <UpdateRow ctx={ctx} />
             <ul class="menu">
               {PAGES.map((p) => (
                 <li key={p}>

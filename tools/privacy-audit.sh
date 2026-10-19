@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Privacy audit: fails if staged changes (or, with --all, every tracked file) contain personal data.
+# Privacy audit: fails if staged changes (or, with --all, every tracked file; with --dist <dir>, every
+# built file in <dir>) contain personal data.
 # Generic patterns live here; learner-specific terms live in data/private/audit-terms.txt (gitignored).
 set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
@@ -7,7 +8,10 @@ cd "$(git rev-parse --show-toplevel)"
 patterns=(
   '[A-Za-z0-9._%+-]+@(gmail|googlemail|outlook|hotmail|yahoo|web|gmx)\.[a-z]+'
   'script\.google\.com/macros/s/[A-Za-z0-9_-]{20,}'
-  'docs\.google\.com/spreadsheets/d/[A-Za-z0-9_-]{20,}'
+  # Any Google Sheet link with a real-looking ID: edit/share links (/d/<id>) and published links
+  # (/d/e/<id>), also URL-encoded. Placeholders such as <YOUR-SHEET-ID> or KEY never match.
+  'docs\.google\.com(/|%2F)spreadsheets(/|%2F)d(/|%2F)(e(/|%2F))?[A-Za-z0-9_-]{20,}'
+  '2PACX-[A-Za-z0-9_-]{20,}'
   'drive\.google\.com/drive/folders/[A-Za-z0-9_-]{20,}'
   '\b1[A-Za-z0-9_-]{32,43}\b'
   'trig_[A-Za-z0-9]{10,}'
@@ -20,7 +24,9 @@ if [[ -f data/private/audit-terms.txt ]]; then
 fi
 re=$(IFS='|'; echo "${patterns[*]}")
 
-if [[ "${1:-}" == "--all" ]]; then
+if [[ "${1:-}" == "--dist" ]]; then
+  hits=$(grep -r -n -i -I -E "$re" -- "${2:?--dist needs a directory}" 2>/dev/null || true)
+elif [[ "${1:-}" == "--all" ]]; then
   hits=$(git ls-files -z | xargs -0 grep -n -i -I -E "$re" -- 2>/dev/null | grep -v "\"integrity\": \"sha512-" || true)
 else
   # Added lines only ("+…", not the "+++ b/file" header): removing a flagged term must pass.

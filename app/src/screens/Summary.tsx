@@ -4,6 +4,7 @@ import { formatTime, t } from '../i18n';
 import { Route, type Grade } from '../run/Run';
 import { shouldHintBackup } from '../storage/backup';
 import { Icon } from '../ui/Icon';
+import { UpdateRow } from '../ui/UpdateRow';
 
 function Stat({ label, value, cls }: { label: string; value: number; cls?: string }) {
   return <div class={cls}><dt>{label}</dt><dd>{value}</dd></div>;
@@ -75,6 +76,7 @@ export function End({ ctx, nothing, onStart, onVerlauf, onSettings }: { ctx: Ctx
         <p>{nothing ? t('end.nothingText') : t('end.text')}</p>
         {notice ? <p class="note" role="status">{notice}</p> : null}
         <SourceLine ctx={ctx} onConnect={onSettings} />
+        <UpdateRow ctx={ctx} />
       </main>
       <footer class="act enter">
         {!nothing ? <button class="primary" type="button" onClick={onStart}>{t('end.start')}</button> : null}
