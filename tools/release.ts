@@ -32,7 +32,7 @@ const YES = args.includes('--yes');
 const opt = (name: string) => { const i = args.indexOf(name); return i >= 0 ? args[i + 1] : undefined; };
 
 function run(bin: string, argv: string[], cwd = ROOT, env: Record<string, string> = {}): string {
-  const r = spawnSync(bin, argv, { cwd, encoding: 'utf8', shell: process.platform === 'win32' && bin !== 'git', env: { ...process.env, ...env } });
+  const r = spawnSync(bin, argv, { cwd, encoding: 'utf8', shell: process.platform === 'win32' && bin === 'npx', env: { ...process.env, ...env } });
   if (r.status !== 0) throw new Error(`${bin} ${argv.join(' ')} failed:\n${r.stdout}\n${r.stderr}`);
   return r.stdout.trim();
 }
