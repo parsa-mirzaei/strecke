@@ -51,6 +51,8 @@ function nextRepo(): string {
 function clone(): string {
   const dir = mkdtempSync(join(tmpdir(), 'strecke-next-'));
   git(['clone', '--quiet', nextRepo(), dir]);
+  // Commits and tags in the clone carry this checkout's identity (it may be set per repository only).
+  for (const k of ['user.name', 'user.email']) { const v = spawnSync('git', ['config', k], { cwd: ROOT, encoding: 'utf8' }).stdout.trim(); if (v) git(['config', k, v], dir); }
   return dir;
 }
 
